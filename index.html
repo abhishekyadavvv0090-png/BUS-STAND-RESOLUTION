@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bengaluru Bus Management System</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        .container {
+            display: flex;
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            margin-top: 20px;
+            margin-bottom: 20px;
+        }
+
+        .map-container {
+            flex: 1;
+            min-height: 80vh;
+            position: relative;
+        }
+
+        #map {
+            height: 100%;
+            width: 100%;
+        }
+
+        .controls-panel {
+            width: 400px;
+            background: #f8f9fa;
+            padding: 25px;
+            overflow-y: auto;
+            border-left: 3px solid #e9ecef;
+        }
+
+        .section {
+            background: white;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+            font-size: 24px;
+        }
+
+        h2 {
+            color: #34495e;
+            margin-bottom: 15px;
+            font-size: 18px;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 8px;
+        }
+
+        .stop-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            margin: 8px 0;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #3498db;
+        }
+
+        .crowd-level {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .crowd-low { background: #d4edda; color: #155724; }
+        .crowd-medium { background: #fff3cd; color: #856404; }
+        .crowd-high { background: #f8d7da; color: #721c24; }
+
+        .btn {
+            padding: 10px 15px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            margin: 5px;
+        }
+
+        .btn-primary { background: #3498db; color: white; }
+        .btn-success { background: #27ae60; color: white; }
+        .btn-warning { background: #f39c12; color: white; }
+        .btn-danger { background: #e74c3c; color: white; }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        input, select, textarea {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e9ecef;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        input:focus, select:focus, textarea:focus {
+            border-color: #3498db;
+            outline: none;
+        }
+
+        .ticket-display {
+            background: #e8f4fc;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 10px;
+            border: 2px dashed #3498db;
+        }
+
+        .api-endpoint {
+            background: #2c3e50;
+            color: white;
+            padding: 10px;
+            border-radius: 6px;
+            font-family: monospace;
+            margin: 10px 0;
+            word-break: break-all;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .status-live { background: #27ae60; }
+        .status-simulated { background: #f39c12; }
+
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+                margin: 10px;
+            }
+            .controls-panel {
+                width: 100%;
+            }
+            .map-container {
+                min-height: 50vh;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Map Section -->
+        <div class="map-container">
+            <div id="map"></div>
+        </div>
+
+        <!-- Controls Panel -->
+        <div class="controls-panel">
+            <!-- Header -->
+            <div class="section">
+                <h1>🚍 Bengaluru Bus System</h1>
+                <p>Real-time tracking & management</p>
+                <div class="api-endpoint">
+                    API: /api/live-buses
+                </div>
+                <div id="status">
+                    <span class="status-indicator status-live"></span>
+                    <span>Live Data Active</span>
+                </div>
+            </div>
+
+            <!-- Ticket Booking -->
+            <div class="section">
+                <h2>🎫 Ticket Booking</h2>
+                <div class="form-group">
+                    <label>From Stop:</label>
+                    <select id="fromStop">
+                        <option value="">Select departure stop</option>
+                        <option value="Majestic">Majestic Bus Stand</option>
+                        <option value="Shivajinagar">Shivajinagar</option>
+                        <option value="Electronic City">Electronic City</option>
+                        <option value="Whitefield">Whitefield</option>
+                        <option value="Jayanagar">Jayanagar</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>To Stop:</label>
+                    <select id="toStop">
+                        <option value="">Select destination stop</option>
+                        <option value="Majestic">Majestic Bus Stand</option>
+                        <option value="Shivajinagar">Shivajinagar</option>
+                        <option value="Electronic City">Electronic City</option>
+                        <option value="Whitefield">Whitefield</option>
+                        <option value="Jayanagar">Jayanagar</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Passenger Count:</label>
+                    <input type="number" id="passengerCount" min="1" max="10" value="1">
+                </div>
+                <button class="btn btn-primary" onclick="bookTicket()">Book Ticket</button>
+                <div id="ticketDisplay" class="ticket-display" style="display: none;">
+                    <h3>Ticket Confirmed! 🎉</h3>
+                    <p id="ticketDetails"></p>
+                    <button class="btn btn-success" onclick="downloadTicket()">Download Ticket</button>
+                </div>
+            </div>
+
+            <!-- Bus Stops Management -->
+            <div class="section">
+                <h2>🚏 Bus Stops Management</h2>
+                <div id="stopsList">
+                    <!-- Stops will be populated by JavaScript -->
+                </div>
+            </div>
+
+            <!-- Real-time Bus Location -->
+            <div class="section">
+                <h2>📍 Live Bus Locations</h2>
+                <div id="busesList">
+                    <!-- Buses will be populated by JavaScript -->
+                </div>
+                <button class="btn btn-primary" onclick="refreshBuses()">Refresh Buses</button>
+            </div>
+
+            <!-- Feedback & Reports -->
+            <div class="section">
+                <h2>📝 Feedback & Reports</h2>
+                <div class="form-group">
+                    <label>Report Type:</label>
+                    <select id="reportType">
+                        <option value="vendor">Vendor Blocking</option>
+                        <option value="crowd">Overcrowding</option>
+                        <option value="delay">Bus Delay</option>
+                        <option value="other">Other Issue</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Select Stop:</label>
+                    <select id="reportStop">
+                        <option value="Majestic">Majestic Bus Stand</option>
+                        <option value="Shivajinagar">Shivajinagar</option>
+                        <option value="Electronic City">Electronic City</option>
+                        <option value="Whitefield">Whitefield</option>
+                        <option value="Jayanagar">Jayanagar</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Description:</label>
+                    <textarea id="reportDesc" rows="3" placeholder="Describe the issue..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Upload Photo (Optional):</label>
+                    <input type="file" id="photoUpload" accept="image/*">
+                </div>
+                <button class="btn btn-warning" onclick="submitReport()">Submit Report</button>
+                <button class="btn btn-primary" onclick="exportData()">Export System Data</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        // Initialize Map
+        const map = L.map('map').setView([12.9716, 77.5946], 12);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+
+        // Bus stops data
+        const busStops = [
+            { id: 1, name: "Majestic Bus Stand", lat: 12.9774, lon: 77.5711, crowd: "High", vendorBlocked: false },
+            { id: 2, name: "Shivajinagar", lat: 12.9915, lon: 77.6037, crowd: "Medium", vendorBlocked: false },
+            { id: 3, name: "Electronic City", lat: 12.8459, lon: 77.6633, crowd: "Low", vendorBlocked: false },
+            { id: 4, name: "Whitefield", lat: 12.9698, lon: 77.7500, crowd: "Medium", vendorBlocked: false },
+            { id: 5, name: "Jayanagar", lat: 12.9279, lon: 77.5939, crowd: "Low", vendorBlocked: false }
+        ];
+
+        let buses = [];
+        let busMarkers = [];
+        let stopMarkers = [];
+
+        // Initialize stops on map
+        function initializeStops() {
+            busStops.forEach(stop => {
+                const marker = L.marker([stop.lat, stop.lon])
+                    .addTo(map)
+                    .bindPopup(`
+                        <b>${stop.name}</b><br>
+                        Crowd: ${stop.crowd}<br>
+                        ${stop.vendorBlocked ? '🚫 Vendor Blocking Reported' : '✅ Clear'}
+                    `);
+                stopMarkers.push(marker);
+            });
+            updateStopsList();
+        }
+
+        // Update stops list in UI
+        function updateStopsList() {
+            const stopsList = document.getElementById('stopsList');
+            stopsList.innerHTML = '';
+            
+            busStops.forEach(stop => {
+                const stopDiv = document.createElement('div');
+                stopDiv.className = 'stop-item';
+                stopDiv.innerHTML = `
+                    <div>
+                        <strong>${stop.name}</strong>
+                        <div style="font-size: 12px; color: #666;">
+                            Crowd: <span class="crowd-level crowd-${stop.crowd.toLowerCase()}">${stop.crowd}</span>
+                            ${stop.vendorBlocked ? ' 🚫 Blocked' : ''}
+                        </div>
+                    </div>
+                    <div>
+                        <button class="btn btn-warning btn-sm" onclick="changeCrowdLevel(${stop.id})">Change Crowd</button>
+                        <button class="btn btn-danger btn-sm" onclick="reportVendorBlocking(${stop.id})">Report Blocking</button>
+                    </div>
+                `;
+                stopsList.appendChild(stopDiv);
+            });
+        }
+
+        // Fetch live bus data
+        async function fetchBuses() {
+            try {
+                const response = await fetch('/api/live-buses');
+                buses = await response.json();
+                updateBusMarkers();
+                updateBusesList();
+                document.getElementById('status').innerHTML = '<span class="status-indicator status-live"></span>Live Data Active';
+            } catch (error) {
+                console.log('Using simulated bus data');
+                simulateBuses();
+                document.getElementById('status').innerHTML = '<span class="status-indicator status-simulated"></span>Simulated Data';
+            }
+        }
+
+        // Update bus markers on map
+        function updateBusMarkers() {
+            // Clear existing bus markers
+            busMarkers.forEach(marker => map.removeLayer(marker));
+            busMarkers = [];
+
+            buses.forEach(bus => {
+                const busIcon = L.divIcon({
+                    html: `🚍<br><small>${bus.route}</small>`,
+                    className: 'bus-marker',
+                    iconSize: [30, 30]
+                });
+
+                const marker = L.marker([bus.lat, bus.lon], { icon: busIcon })
+                    .addTo(map)
+                    .bindPopup(`
+                        <b>Bus ${bus.id}</b><br>
+                        Route: ${bus.route}<br>
+                        ETA: ${bus.eta} min<br>
+                        Next Stop: ${bus.nextStop}
+                    `);
+                busMarkers.push(marker);
+            });
+        }
+
+        // Update buses list in UI
+        function updateBusesList() {
+            const busesList = document.getElementById('busesList');
+            busesList.innerHTML = '';
+            
+            buses.forEach(bus => {
+                const busDiv = document.createElement('div');
+                busDiv.className = 'stop-item';
+                busDiv.innerHTML = `
+                    <div>
+                        <strong>Bus ${bus.id}</strong>
+                        <div style="font-size: 12px; color: #666;">
+                            Route: ${bus.route}<br>
+                            ETA: ${bus.eta} min to ${bus.nextStop}
+                        </div>
+                    </div>
+                `;
+                busesList.appendChild(busDiv);
+            });
+        }
+
+        // Simulate buses if API fails
+        function simulateBuses() {
+            buses = [
+                { id: 'KA01AB1234', route: 'Vajra 1', lat: 12.9716, lon: 77.5946, eta: 5, nextStop: 'Majestic' },
+                { id: 'KA01CD5678', route: 'Vajra 2', lat: 12.9816, lon: 77.6046, eta: 8, nextStop: 'Shivajinagar' },
+                { id: 'KA01EF9012', route: 'Big 10', lat: 12.9616, lon: 77.5846, eta: 12, nextStop: 'Jayanagar' },
+                { id: 'KA01GH3456', route: 'Big 5', lat: 12.9916, lon: 77.6146, eta: 3, nextStop: 'Majestic' },
+                { id: 'KA01IJ7890', route: 'Airport', lat: 12.9516, lon: 77.5746, eta: 15, nextStop: 'Electronic City' }
+            ];
+            updateBusMarkers();
+            updateBusesList();
+        }
+
+        // Ticket Booking Function
+        function bookTicket() {
+            const fromStop = document.getElementById('fromStop').value;
+            const toStop = document.getElementById('toStop').value;
+            const passengerCount = document.getElementById('passengerCount').value;
+
+            if (!fromStop || !toStop) {
+                alert('Please select both departure and destination stops.');
+                return;
+            }
+
+            const ticketDetails = `
+                From: ${fromStop}<br>
+                To: ${toStop}<br>
+                Passengers: ${passengerCount}<br>
+                Fare: ₹${passengerCount * 25}<br>
+                Ticket ID: ${Math.random().toString(36).substr(2, 9).toUpperCase()}<br>
+                Time: ${new Date().toLocaleString()}
+            `;
+
+            document.getElementById('ticketDetails').innerHTML = ticketDetails;
+            document.getElementById('ticketDisplay').style.display = 'block';
+            
+            alert('Ticket booked successfully! 🎫');
+        }
+
+        // Download Ticket
+        function downloadTicket() {
+            const ticketContent = document.getElementById('ticketDetails').innerText;
+            const blob = new Blob([ticketContent], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'bus-ticket.txt';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // Change crowd level
+        function changeCrowdLevel(stopId) {
+            const stop = busStops.find(s => s.id === stopId);
+            const levels = ['Low', 'Medium', 'High'];
+            const currentIndex = levels.indexOf(stop.crowd);
+            stop.crowd = levels[(currentIndex + 1) % levels.length];
+            updateStopsList();
+            updateStopMarkers();
+        }
+
+        // Report vendor blocking
+        function reportVendorBlocking(stopId) {
+            const stop = busStops.find(s => s.id === stopId);
+            stop.vendorBlocked = !stop.vendorBlocked;
+            
+            // Increase ETA for buses near this stop
+            buses.forEach(bus => {
+                if (bus.nextStop === stop.name) {
+                    bus.eta += 5;
+                }
+            });
+            
+            updateStopsList();
+            updateBusMarkers();
+            updateBusesList();
+            
+            alert(stop.vendorBlocked ? 
+                `Vendor blocking reported at ${stop.name}. ETAs increased.` : 
+                `Vendor blocking cleared at ${stop.name}.`);
+        }
+
+        // Submit report
+        function submitReport() {
+            const reportType = document.getElementById('reportType').value;
+            const reportStop = document.getElementById('reportStop').value;
+            const reportDesc = document.getElementById('reportDesc').value;
+            const photoFile = document.getElementById('photoUpload').files[0];
+
+            if (!reportDesc) {
+                alert('Please provide a description for the report.');
+                return;
+            }
+
+            let message = `Report submitted successfully!\n\nType: ${reportType}\nStop: ${reportStop}\nDescription: ${reportDesc}`;
+            
+            if (photoFile) {
+                message += `\nPhoto: ${photoFile.name} (uploaded)`;
+            }
+
+            alert(message);
+            
+            // Reset form
+            document.getElementById('reportDesc').value = '';
+            document.getElementById('photoUpload').value = '';
+        }
+
+        // Export system data
+        function exportData() {
+            const exportData = {
+                timestamp: new Date().toISOString(),
+                buses: buses,
+                stops: busStops,
+                systemStatus: 'operational'
+            };
+
+            const dataStr = JSON.stringify(exportData, null, 2);
+            const blob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `bus-system-export-${new Date().getTime()}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // Refresh buses
+        function refreshBuses() {
+            fetchBuses();
+        }
+
+        // Update stop markers
+        function updateStopMarkers() {
+            stopMarkers.forEach((marker, index) => {
+                const stop = busStops[index];
+                marker.setPopupContent(`
+                    <b>${stop.name}</b><br>
+                    Crowd: ${stop.crowd}<br>
+                    ${stop.vendorBlocked ? '🚫 Vendor Blocking Reported' : '✅ Clear'}
+                `);
+            });
+        }
+
+        // Initialize application
+        initializeStops();
+        fetchBuses();
+        
+        // Refresh buses every 5 seconds
+        setInterval(fetchBuses, 5000);
+    </script>
+</body>
+</html>
