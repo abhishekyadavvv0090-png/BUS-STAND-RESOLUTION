@@ -15,7 +15,7 @@ A real-time bus tracking and management system for Bengaluru city designed to re
 
 ## 🚀 Quick Deploy
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/YOUR_USERNAME/bengaluru-bus-system)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/abhishekyadavvv0090-png/bengaluru-bus-system)
 
 ## 🛠️ Tech Stack
 
@@ -47,3 +47,13 @@ bengaluru-bus-system/
 ## 📄 License
 
 MIT License - feel free to use this project for your city!
+
+## 👨‍💻 Created By
+
+**Team Members:**
+- **VIJAY**
+- **ESHWAR** 
+- **AMAN**
+- **ABHISHEK**
+
+*Bengaluru Bus Management System - Making public transportation smarter*
