@@ -24,4 +24,26 @@ A real-time bus tracking and management system for Bengaluru city designed to re
 - **Maps**: OpenStreetMap
 - **Deployment**: Vercel
 
-## 📁 Project Structure
+## 📁 Project Structure  
+bengaluru-bus-system/
+├── index.html # Main application
+├── api/
+│ └── live-buses.js # Serverless API endpoint
+├── vercel.json # Deployment config
+└── README.md
+
+
+## 🔧 API Endpoints
+
+- `GET /api/live-buses` - Returns real-time bus locations with ETAs
+
+## 💡 Usage
+
+1. **Track Buses**: View live bus positions on the map
+2. **Book Tickets**: Select routes and passengers for digital tickets  
+3. **Manage Stops**: Monitor crowd levels and report issues
+4. **Export Data**: Download system reports in JSON format
+
+## 📄 License
+
+MIT License - feel free to use this project for your city!
