@@ -1,4 +1,4 @@
- <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -166,6 +166,50 @@
         .status-live { background: #27ae60; }
         .status-simulated { background: #f39c12; }
 
+        .bus-marker {
+            background: rgba(52, 152, 219, 0.9);
+            color: white;
+            border-radius: 50%;
+            text-align: center;
+            font-weight: bold;
+            border: 2px solid white;
+            box-shadow: 0 0 10px rgba(0,0,0,0.5);
+            width: 40px !important;
+            height: 40px !important;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+
+        .bus-marker small {
+            display: block;
+            font-size: 9px;
+            margin-top: -2px;
+        }
+
+        .live-timestamp {
+            background: #e8f4fc;
+            padding: 8px 12px;
+            border-radius: 6px;
+            margin: 10px 0;
+            font-size: 13px;
+            border-left: 4px solid #3498db;
+        }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #27ae60;
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            z-index: 1000;
+            display: none;
+        }
+
         @media (max-width: 768px) {
             .container {
                 flex-direction: column;
@@ -177,11 +221,22 @@
             .map-container {
                 min-height: 50vh;
             }
+            .notification {
+                top: 10px;
+                right: 10px;
+                left: 10px;
+            }
         }
     </style>
 </head>
 <body>
-    <!-- Created by: VIJAY, ESHWAR, AMAN, ABHISHEK ,AKSHAY -->
+    <!-- Created by: VIJAY, ESHWAR, AMAN, ABHISHEK, AKSHAY -->
+    
+    <!-- Notification Popup -->
+    <div class="notification" id="notification">
+        <strong>🚍 Update!</strong> <span id="notification-text"></span>
+    </div>
+
     <div class="container">
         <!-- Map Section -->
         <div class="map-container">
@@ -198,11 +253,16 @@
                     <strong>👨‍💻 Created by:</strong> VIJAY, ESHWAR, AMAN, ABHISHEK, AKSHAY
                 </div>
                 <div class="api-endpoint">
-                    API: /api/live-buses
+                    <div>API Status: <span style="color:#27ae60">●</span> Operational</div>
+                    <div style="font-size:12px; margin-top:5px;">Live tracking with simulated data | Auto-refresh every 5s</div>
+                </div>
+                <div class="live-timestamp">
+                    <strong>📍 Bengaluru Time:</strong> <span id="current-time">--:--:--</span> IST<br>
+                    <small>Last bus update: <span id="last-update">Just now</span></small>
                 </div>
                 <div id="status">
-                    <span class="status-indicator status-live"></span>
-                    <span>Live Data Active</span>
+                    <span class="status-indicator status-simulated"></span>
+                    <span>Simulated Data (For Demo)</span>
                 </div>
             </div>
 
@@ -254,10 +314,16 @@
             <!-- Real-time Bus Location -->
             <div class="section">
                 <h2>📍 Live Bus Locations</h2>
+                <div style="font-size:13px; color:#666; margin-bottom:10px;">
+                    Showing <span id="bus-count">5</span> active buses
+                </div>
                 <div id="busesList">
                     <!-- Buses will be populated by JavaScript -->
                 </div>
-                <button class="btn btn-primary" onclick="refreshBuses()">Refresh Buses</button>
+                <div style="margin-top: 15px;">
+                    <button class="btn btn-primary" onclick="refreshBuses()">Refresh Buses</button>
+                    <button class="btn btn-warning" onclick="addNewBus()">Add Demo Bus</button>
+                </div>
             </div>
 
             <!-- Feedback & Reports -->
@@ -301,12 +367,15 @@
         <h3>🚍 Bengaluru Bus Management System</h3>
         <p><strong>Team:</strong> VIJAY, ESHWAR, AMAN, ABHISHEK, AKSHAY</p>
         <p>Making public transportation smarter for Bengaluru</p>
+        <p style="font-size:12px; opacity:0.8; margin-top:10px;">
+            Last updated: <span id="footer-time">--:--:--</span> | Auto-refresh active
+        </p>
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        // Initialize Map
-        const map = L.map('map').setView([12.9716, 77.5946], 12);
+        // Initialize Map with better Bengaluru center
+        const map = L.map('map').setView([12.9760, 77.5790], 13);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '© OpenStreetMap contributors'
         }).addTo(map);
@@ -317,12 +386,54 @@
             { id: 2, name: "Shivajinagar", lat: 12.9915, lon: 77.6037, crowd: "Medium", vendorBlocked: false },
             { id: 3, name: "Electronic City", lat: 12.8459, lon: 77.6633, crowd: "Low", vendorBlocked: false },
             { id: 4, name: "Whitefield", lat: 12.9698, lon: 77.7500, crowd: "Medium", vendorBlocked: false },
-            { id: 5, name: "Jayanagar", lat: 12.9279, lon: 77.5939, crowd: "Low", vendorBlocked: false }
+            { id: 5, name: "Jayanagar", lat: 12.9279, lon: 77.5939, crowd: "Low", vendorBlocked: false },
+            { id: 6, name: "Koramangala", lat: 12.9352, lon: 77.6245, crowd: "Medium", vendorBlocked: false },
+            { id: 7, name: "Indiranagar", lat: 12.9784, lon: 77.6408, crowd: "High", vendorBlocked: false },
+            { id: 8, name: "MG Road", lat: 12.9754, lon: 77.6095, crowd: "High", vendorBlocked: false }
         ];
 
         let buses = [];
         let busMarkers = [];
         let stopMarkers = [];
+        let busCounter = 0;
+
+        // Live timestamp function
+        function updateTime() {
+            const now = new Date();
+            const timeString = now.toLocaleTimeString('en-IN', {
+                timeZone: 'Asia/Kolkata',
+                hour12: false,
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            });
+            
+            const dateString = now.toLocaleDateString('en-IN', {
+                timeZone: 'Asia/Kolkata',
+                weekday: 'short',
+                day: 'numeric',
+                month: 'short'
+            });
+            
+            document.getElementById('current-time').textContent = timeString;
+            document.getElementById('footer-time').textContent = `${dateString} ${timeString}`;
+        }
+
+        // Show notification
+        function showNotification(message, type = 'info') {
+            const notification = document.getElementById('notification');
+            const text = document.getElementById('notification-text');
+            
+            text.textContent = message;
+            notification.style.background = type === 'error' ? '#e74c3c' : 
+                                          type === 'warning' ? '#f39c12' : '#27ae60';
+            
+            notification.style.display = 'block';
+            
+            setTimeout(() => {
+                notification.style.display = 'none';
+            }, 3000);
+        }
 
         // Initialize stops on map
         function initializeStops() {
@@ -330,9 +441,17 @@
                 const marker = L.marker([stop.lat, stop.lon])
                     .addTo(map)
                     .bindPopup(`
-                        <b>${stop.name}</b><br>
-                        Crowd: ${stop.crowd}<br>
-                        ${stop.vendorBlocked ? '🚫 Vendor Blocking Reported' : '✅ Clear'}
+                        <div style="min-width: 200px;">
+                            <h4 style="margin: 0 0 5px 0; color: #2c3e50;">${stop.name}</h4>
+                            <div style="display: flex; align-items: center; margin: 5px 0;">
+                                <strong>Crowd:</strong> 
+                                <span class="crowd-level crowd-${stop.crowd.toLowerCase()}" 
+                                      style="margin-left: 10px;">${stop.crowd}</span>
+                            </div>
+                            ${stop.vendorBlocked ? 
+                                '<div style="color: #e74c3c; margin: 5px 0;">🚫 Vendor Blocking Reported</div>' : 
+                                '<div style="color: #27ae60; margin: 5px 0;">✅ Clear Path</div>'}
+                        </div>
                     `);
                 stopMarkers.push(marker);
             });
@@ -348,16 +467,18 @@
                 const stopDiv = document.createElement('div');
                 stopDiv.className = 'stop-item';
                 stopDiv.innerHTML = `
-                    <div>
+                    <div style="flex: 1;">
                         <strong>${stop.name}</strong>
-                        <div style="font-size: 12px; color: #666;">
-                            Crowd: <span class="crowd-level crowd-${stop.crowd.toLowerCase()}">${stop.crowd}</span>
-                            ${stop.vendorBlocked ? ' 🚫 Blocked' : ''}
+                        <div style="font-size: 12px; color: #666; margin-top: 3px;">
+                            <span class="crowd-level crowd-${stop.crowd.toLowerCase()}">${stop.crowd} Crowd</span>
+                            ${stop.vendorBlocked ? ' <span style="color:#e74c3c;">🚫 Blocked</span>' : ''}
                         </div>
                     </div>
                     <div>
-                        <button class="btn btn-warning btn-sm" onclick="changeCrowdLevel(${stop.id})">Change Crowd</button>
-                        <button class="btn btn-danger btn-sm" onclick="reportVendorBlocking(${stop.id})">Report Blocking</button>
+                        <button class="btn btn-warning" style="padding: 5px 10px; font-size: 12px;" 
+                                onclick="changeCrowdLevel(${stop.id})">Change</button>
+                        <button class="btn btn-danger" style="padding: 5px 10px; font-size: 12px;" 
+                                onclick="reportVendorBlocking(${stop.id})">${stop.vendorBlocked ? 'Clear' : 'Report'}</button>
                     </div>
                 `;
                 stopsList.appendChild(stopDiv);
@@ -375,7 +496,7 @@
             } catch (error) {
                 console.log('Using simulated bus data');
                 simulateBuses();
-                document.getElementById('status').innerHTML = '<span class="status-indicator status-simulated"></span>Simulated Data';
+                document.getElementById('status').innerHTML = '<span class="status-indicator status-simulated"></span>Simulated Data (For Demo)';
             }
         }
 
@@ -387,20 +508,34 @@
 
             buses.forEach(bus => {
                 const busIcon = L.divIcon({
-                    html: `🚍<br><small>${bus.route}</small>`,
+                    html: `<div>🚍<small>${bus.route.substring(0, 3)}</small></div>`,
                     className: 'bus-marker',
-                    iconSize: [30, 30]
+                    iconSize: [40, 40]
                 });
 
                 const marker = L.marker([bus.lat, bus.lon], { icon: busIcon })
                     .addTo(map)
                     .bindPopup(`
-                        <b>Bus ${bus.id}</b><br>
-                        Route: ${bus.route}<br>
-                        ETA: ${bus.eta} min<br>
-                        Next Stop: ${bus.nextStop}
+                        <div style="min-width: 200px;">
+                            <h4 style="margin: 0 0 5px 0;">Bus ${bus.id}</h4>
+                            <div><strong>Route:</strong> ${bus.route}</div>
+                            <div><strong>ETA:</strong> ${bus.eta} min</div>
+                            <div><strong>Next Stop:</strong> ${bus.nextStop}</div>
+                            <div><strong>Speed:</strong> ${bus.speed || '25-35'} km/h</div>
+                        </div>
                     `);
                 busMarkers.push(marker);
+            });
+            
+            // Update bus count
+            document.getElementById('bus-count').textContent = buses.length;
+            
+            // Update last update time
+            const now = new Date();
+            document.getElementById('last-update').textContent = now.toLocaleTimeString('en-IN', {
+                timeZone: 'Asia/Kolkata',
+                hour: '2-digit',
+                minute: '2-digit'
             });
         }
 
@@ -415,9 +550,9 @@
                 busDiv.innerHTML = `
                     <div>
                         <strong>Bus ${bus.id}</strong>
-                        <div style="font-size: 12px; color: #666;">
-                            Route: ${bus.route}<br>
-                            ETA: ${bus.eta} min to ${bus.nextStop}
+                        <div style="font-size: 12px; color: #666; margin-top: 3px;">
+                            <span style="display:inline-block; width:60px;">Route: ${bus.route}</span> | 
+                            ETA: <span style="color:#e74c3c;">${bus.eta} min</span> to ${bus.nextStop}
                         </div>
                     </div>
                 `;
@@ -425,17 +560,77 @@
             });
         }
 
-        // Simulate buses if API fails
+        // Simulate buses with realistic movement
         function simulateBuses() {
-            buses = [
-                { id: 'KA01AB1234', route: 'Vajra 1', lat: 12.9716, lon: 77.5946, eta: 5, nextStop: 'Majestic' },
-                { id: 'KA01CD5678', route: 'Vajra 2', lat: 12.9816, lon: 77.6046, eta: 8, nextStop: 'Shivajinagar' },
-                { id: 'KA01EF9012', route: 'Big 10', lat: 12.9616, lon: 77.5846, eta: 12, nextStop: 'Jayanagar' },
-                { id: 'KA01GH3456', route: 'Big 5', lat: 12.9916, lon: 77.6146, eta: 3, nextStop: 'Majestic' },
-                { id: 'KA01IJ7890', route: 'Airport', lat: 12.9516, lon: 77.5746, eta: 15, nextStop: 'Electronic City' }
-            ];
+            if (buses.length === 0) {
+                // Initial buses
+                buses = [
+                    { id: 'KA01AB1234', route: 'Vajra 1', lat: 12.9774, lon: 77.5711, eta: 5, nextStop: 'Majestic', speed: '30' },
+                    { id: 'KA01CD5678', route: 'Vajra 2', lat: 12.9915, lon: 77.6037, eta: 8, nextStop: 'Shivajinagar', speed: '28' },
+                    { id: 'KA01EF9012', route: 'Big 10', lat: 12.9698, lon: 77.7500, eta: 12, nextStop: 'Whitefield', speed: '35' },
+                    { id: 'KA01GH3456', route: 'Big 5', lat: 12.9279, lon: 77.5939, eta: 3, nextStop: 'Jayanagar', speed: '25' },
+                    { id: 'KA01IJ7890', route: 'Airport', lat: 12.9593, lon: 77.6615, eta: 15, nextStop: 'Electronic City', speed: '32' }
+                ];
+            }
+            
+            // Make buses move realistically
+            buses.forEach(bus => {
+                // Move bus towards next stop
+                const nextStop = busStops.find(stop => stop.name === bus.nextStop);
+                if (nextStop) {
+                    const latDiff = nextStop.lat - bus.lat;
+                    const lonDiff = nextStop.lon - bus.lon;
+                    
+                    // Move 1/10th of the distance each update
+                    bus.lat += latDiff * 0.1;
+                    bus.lon += lonDiff * 0.1;
+                    
+                    // Update ETA based on distance
+                    const distance = Math.sqrt(latDiff*latDiff + lonDiff*lonDiff) * 100;
+                    bus.eta = Math.max(1, Math.floor(distance / 3));
+                    
+                    // If close to stop, move to next stop
+                    if (distance < 1) {
+                        const currentIndex = busStops.findIndex(stop => stop.name === bus.nextStop);
+                        const nextIndex = (currentIndex + 1) % busStops.length;
+                        bus.nextStop = busStops[nextIndex].name;
+                        bus.eta = 8 + Math.floor(Math.random() * 15);
+                        
+                        showNotification(`Bus ${bus.id} arrived at ${busStops[currentIndex].name}`);
+                    }
+                }
+                
+                // Keep buses in Bengaluru bounds
+                bus.lat = Math.max(12.80, Math.min(13.10, bus.lat));
+                bus.lon = Math.max(77.50, Math.min(77.80, bus.lon));
+            });
+            
             updateBusMarkers();
             updateBusesList();
+        }
+
+        // Add new demo bus
+        function addNewBus() {
+            busCounter++;
+            const routes = ['Vajra 3', 'Vajra 4', 'Big 15', 'Big 20', 'City Circular', 'Express 1'];
+            const randomStop = busStops[Math.floor(Math.random() * busStops.length)];
+            const nextStopIndex = (busStops.findIndex(stop => stop.name === randomStop.name) + 1) % busStops.length;
+            
+            const newBus = {
+                id: `KA01XY${1000 + busCounter}`,
+                route: routes[Math.floor(Math.random() * routes.length)],
+                lat: randomStop.lat + (Math.random() - 0.5) * 0.02,
+                lon: randomStop.lon + (Math.random() - 0.5) * 0.02,
+                eta: 5 + Math.floor(Math.random() * 15),
+                nextStop: busStops[nextStopIndex].name,
+                speed: (25 + Math.floor(Math.random() * 15)).toString()
+            };
+            
+            buses.push(newBus);
+            updateBusMarkers();
+            updateBusesList();
+            
+            showNotification(`Added new bus: ${newBus.id} on ${newBus.route} route`);
         }
 
         // Ticket Booking Function
@@ -445,23 +640,37 @@
             const passengerCount = document.getElementById('passengerCount').value;
 
             if (!fromStop || !toStop) {
-                alert('Please select both departure and destination stops.');
+                showNotification('Please select both departure and destination stops.', 'warning');
                 return;
             }
 
+            if (fromStop === toStop) {
+                showNotification('Departure and destination cannot be the same.', 'warning');
+                return;
+            }
+
+            const fare = passengerCount * 25;
+            const ticketId = 'TKT' + Date.now().toString().substr(-6);
+            const bookingTime = new Date().toLocaleString('en-IN', {
+                timeZone: 'Asia/Kolkata'
+            });
+
             const ticketDetails = `
-                From: ${fromStop}<br>
-                To: ${toStop}<br>
-                Passengers: ${passengerCount}<br>
-                Fare: ₹${passengerCount * 25}<br>
-                Ticket ID: ${Math.random().toString(36).substr(2, 9).toUpperCase()}<br>
-                Time: ${new Date().toLocaleString()}
+                <div style="line-height: 1.6;">
+                    <div><strong>From:</strong> ${fromStop}</div>
+                    <div><strong>To:</strong> ${toStop}</div>
+                    <div><strong>Passengers:</strong> ${passengerCount}</div>
+                    <div><strong>Fare:</strong> ₹${fare}</div>
+                    <div><strong>Ticket ID:</strong> ${ticketId}</div>
+                    <div><strong>Booking Time:</strong> ${bookingTime}</div>
+                    <div><strong>Status:</strong> <span style="color:#27ae60;">Confirmed</span></div>
+                </div>
             `;
 
             document.getElementById('ticketDetails').innerHTML = ticketDetails;
             document.getElementById('ticketDisplay').style.display = 'block';
             
-            alert('Ticket booked successfully! 🎫');
+            showNotification(`Ticket booked successfully! ID: ${ticketId}`);
         }
 
         // Download Ticket
@@ -474,6 +683,8 @@
             a.download = 'bus-ticket.txt';
             a.click();
             URL.revokeObjectURL(url);
+            
+            showNotification('Ticket downloaded successfully!');
         }
 
         // Change crowd level
@@ -484,6 +695,8 @@
             stop.crowd = levels[(currentIndex + 1) % levels.length];
             updateStopsList();
             updateStopMarkers();
+            
+            showNotification(`Crowd level at ${stop.name} changed to ${stop.crowd}`);
         }
 
         // Report vendor blocking
@@ -494,7 +707,7 @@
             // Increase ETA for buses near this stop
             buses.forEach(bus => {
                 if (bus.nextStop === stop.name) {
-                    bus.eta += 5;
+                    bus.eta += stop.vendorBlocked ? 5 : -5;
                 }
             });
             
@@ -502,9 +715,11 @@
             updateBusMarkers();
             updateBusesList();
             
-            alert(stop.vendorBlocked ? 
+            showNotification(
+                stop.vendorBlocked ? 
                 `Vendor blocking reported at ${stop.name}. ETAs increased.` : 
-                `Vendor blocking cleared at ${stop.name}.`);
+                `Vendor blocking cleared at ${stop.name}. ETAs normalized.`
+            );
         }
 
         // Submit report
@@ -515,17 +730,27 @@
             const photoFile = document.getElementById('photoUpload').files[0];
 
             if (!reportDesc) {
-                alert('Please provide a description for the report.');
+                showNotification('Please provide a description for the report.', 'warning');
                 return;
             }
 
-            let message = `Report submitted successfully!\n\nType: ${reportType}\nStop: ${reportStop}\nDescription: ${reportDesc}`;
+            const reportTypes = {
+                'vendor': 'Vendor Blocking',
+                'crowd': 'Overcrowding',
+                'delay': 'Bus Delay',
+                'other': 'Other Issue'
+            };
+
+            let message = `Thank you for your report!\n\n`;
+            message += `Type: ${reportTypes[reportType]}\n`;
+            message += `Location: ${reportStop}\n`;
+            message += `Description: ${reportDesc}`;
             
             if (photoFile) {
-                message += `\nPhoto: ${photoFile.name} (uploaded)`;
+                message += `\n\nPhoto "${photoFile.name}" has been attached.`;
             }
 
-            alert(message);
+            showNotification(`Report submitted for ${reportStop}`);
             
             // Reset form
             document.getElementById('reportDesc').value = '';
@@ -536,6 +761,8 @@
         function exportData() {
             const exportData = {
                 timestamp: new Date().toISOString(),
+                totalBuses: buses.length,
+                totalStops: busStops.length,
                 buses: buses,
                 stops: busStops,
                 systemStatus: 'operational'
@@ -549,11 +776,14 @@
             a.download = `bus-system-export-${new Date().getTime()}.json`;
             a.click();
             URL.revokeObjectURL(url);
+            
+            showNotification('System data exported successfully!');
         }
 
         // Refresh buses
         function refreshBuses() {
             fetchBuses();
+            showNotification('Refreshing bus locations...');
         }
 
         // Update stop markers
@@ -561,19 +791,41 @@
             stopMarkers.forEach((marker, index) => {
                 const stop = busStops[index];
                 marker.setPopupContent(`
-                    <b>${stop.name}</b><br>
-                    Crowd: ${stop.crowd}<br>
-                    ${stop.vendorBlocked ? '🚫 Vendor Blocking Reported' : '✅ Clear'}
+                    <div style="min-width: 200px;">
+                        <h4 style="margin: 0 0 5px 0; color: #2c3e50;">${stop.name}</h4>
+                        <div style="display: flex; align-items: center; margin: 5px 0;">
+                            <strong>Crowd:</strong> 
+                            <span class="crowd-level crowd-${stop.crowd.toLowerCase()}" 
+                                  style="margin-left: 10px;">${stop.crowd}</span>
+                        </div>
+                        ${stop.vendorBlocked ? 
+                            '<div style="color: #e74c3c; margin: 5px 0;">🚫 Vendor Blocking Reported</div>' : 
+                            '<div style="color: #27ae60; margin: 5px 0;">✅ Clear Path</div>'}
+                    </div>
                 `);
             });
         }
 
         // Initialize application
-        initializeStops();
-        fetchBuses();
-        
-        // Refresh buses every 5 seconds
-        setInterval(fetchBuses, 5000);
+        function initApp() {
+            initializeStops();
+            fetchBuses();
+            updateTime();
+            
+            // Update time every second
+            setInterval(updateTime, 1000);
+            
+            // Refresh buses every 5 seconds
+            setInterval(simulateBuses, 5000);
+            
+            // Initial notification
+            setTimeout(() => {
+                showNotification('Welcome to Bengaluru Bus System! Tracking 5 active buses.');
+            }, 1000);
+        }
+
+        // Start the application
+        initApp();
     </script>
 </body>
 </html>
