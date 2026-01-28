@@ -653,7 +653,10 @@ app.get('/api/admin/dashboard', async (req, res) => {
         res.status(500).json({ success: false, error: error.message });
     }
 });
-
+//Root route 
+app.get("/",(req,res) => {
+    res.send("Bus Stand Resolution backend is running successfully!");
+});
 // Start Server
 app.listen(PORT, () => {
     console.log(`🚀 Bengaluru Bus Backend running on port ${PORT}`);
