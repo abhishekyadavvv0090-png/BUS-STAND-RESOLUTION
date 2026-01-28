@@ -71,7 +71,7 @@
             padding-bottom: 8px;
         }
 
-        .stop-item {
+        .stop-item, .bus-item {
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -153,6 +153,7 @@
             font-family: monospace;
             margin: 10px 0;
             word-break: break-all;
+            font-size: 12px;
         }
 
         .status-indicator {
@@ -182,12 +183,6 @@
             font-size: 18px;
         }
 
-        .bus-marker small {
-            display: block;
-            font-size: 9px;
-            margin-top: -2px;
-        }
-
         .live-timestamp {
             background: #e8f4fc;
             padding: 8px 12px;
@@ -210,6 +205,36 @@
             display: none;
         }
 
+        /* Capacity indicator styles */
+        .capacity-indicator {
+            margin-top: 10px;
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 8px;
+        }
+
+        .capacity-bar {
+            width: 100%;
+            height: 8px;
+            background: #ecf0f1;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 8px;
+        }
+
+        .capacity-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.5s ease;
+        }
+
+        .capacity-info {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: #666;
+        }
+
         @media (max-width: 768px) {
             .container {
                 flex-direction: column;
@@ -221,31 +246,20 @@
             .map-container {
                 min-height: 50vh;
             }
-            .notification {
-                top: 10px;
-                right: 10px;
-                left: 10px;
-            }
         }
     </style>
 </head>
 <body>
-    <!-- Created by: VIJAY, ESHWAR, AMAN, ABHISHEK, AKSHAY -->
-    
-    <!-- Notification Popup -->
     <div class="notification" id="notification">
         <strong>🚍 Update!</strong> <span id="notification-text"></span>
     </div>
 
     <div class="container">
-        <!-- Map Section -->
         <div class="map-container">
             <div id="map"></div>
         </div>
 
-        <!-- Controls Panel -->
         <div class="controls-panel">
-            <!-- Header -->
             <div class="section">
                 <h1>🚍 Bengaluru Bus System</h1>
                 <p>Real-time tracking & management</p>
@@ -253,174 +267,111 @@
                     <strong>👨‍💻 Created by:</strong> VIJAY, ESHWAR, AMAN, ABHISHEK, AKSHAY
                 </div>
                 <div class="api-endpoint">
-                    <div>API Status: <span style="color:#27ae60">●</span> Operational</div>
-                    <div style="font-size:12px; margin-top:5px;">Live tracking with simulated data | Auto-refresh every 5s</div>
+                    <div>Backend: <span style="color:#27ae60" id="backend-status">●</span> <span id="backend-url">Connecting...</span></div>
                 </div>
                 <div class="live-timestamp">
                     <strong>📍 Bengaluru Time:</strong> <span id="current-time">--:--:--</span> IST<br>
                     <small>Last bus update: <span id="last-update">Just now</span></small>
                 </div>
-                <div id="status">
-                    <span class="status-indicator status-simulated"></span>
-                    <span>Simulated Data (For Demo)</span>
-                </div>
             </div>
 
             <!-- Ticket Booking -->
             <div class="section">
-                <h2>🎫 Ticket Booking</h2>
-                <div class="form-group">
-                    <label>From Stop:</label>
-                    <select id="fromStop">
-                        <option value="">Select departure stop</option>
-                        <option value="Majestic">Majestic Bus Stand</option>
-                        <option value="Shivajinagar">Shivajinagar</option>
-                        <option value="Electronic City">Electronic City</option>
-                        <option value="Whitefield">Whitefield</option>
-                        <option value="Jayanagar">Jayanagar</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>To Stop:</label>
-                    <select id="toStop">
-                        <option value="">Select destination stop</option>
-                        <option value="Majestic">Majestic Bus Stand</option>
-                        <option value="Shivajinagar">Shivajinagar</option>
-                        <option value="Electronic City">Electronic City</option>
-                        <option value="Whitefield">Whitefield</option>
-                        <option value="Jayanagar">Jayanagar</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Passenger Count:</label>
-                    <input type="number" id="passengerCount" min="1" max="10" value="1">
-                </div>
-                <button class="btn btn-primary" onclick="bookTicket()">Book Ticket</button>
+                <h2>🎫 Book Your Ticket</h2>
+                <form id="bookingForm" onsubmit="bookTicket(event)">
+                    <div class="form-group">
+                        <label>Your Name: *</label>
+                        <input type="text" id="userName" required placeholder="Enter your full name">
+                    </div>
+                    <div class="form-group">
+                        <label>Phone Number: *</label>
+                        <input type="tel" id="userPhone" required placeholder="10-digit number" pattern="[0-9]{10}">
+                    </div>
+                    <div class="form-group">
+                        <label>Email: (optional)</label>
+                        <input type="email" id="userEmail" placeholder="For ticket confirmation">
+                    </div>
+                    <div class="form-group">
+                        <label>From Stop: *</label>
+                        <select id="fromStop" required>
+                            <option value="">Select departure stop</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>To Stop: *</label>
+                        <select id="toStop" required>
+                            <option value="">Select destination stop</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Number of Passengers: *</label>
+                        <input type="number" id="passengers" min="1" max="10" value="1" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Payment Method: *</label>
+                        <select id="paymentMethod" required>
+                            <option value="cash">Cash on Bus</option>
+                            <option value="upi">UPI on Bus</option>
+                            <option value="card">Card on Bus</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Book Ticket</button>
+                </form>
+                
                 <div id="ticketDisplay" class="ticket-display" style="display: none;">
-                    <h3>Ticket Confirmed! 🎉</h3>
-                    <p id="ticketDetails"></p>
-                    <button class="btn btn-success" onclick="downloadTicket()">Download Ticket</button>
+                    <h3>✅ Ticket Booked Successfully!</h3>
+                    <div id="ticketDetails"></div>
+                    <div id="qrCode" style="text-align: center; margin: 15px 0;"></div>
+                    <p style="color: #856404; background: #fff3cd; padding: 10px; border-radius: 5px; margin-top: 10px;">
+                        ⚠️ Please pay the fare to the bus conductor when boarding.
+                    </p>
                 </div>
             </div>
 
-            <!-- Bus Stops Management -->
+            <!-- Bus Stops -->
             <div class="section">
-                <h2>🚏 Bus Stops Management</h2>
-                <div id="stopsList">
-                    <!-- Stops will be populated by JavaScript -->
-                </div>
+                <h2>🚏 Bus Stops</h2>
+                <div id="stopsList">Loading stops...</div>
             </div>
 
-            <!-- Real-time Bus Location -->
+            <!-- Live Buses -->
             <div class="section">
                 <h2>📍 Live Bus Locations</h2>
                 <div style="font-size:13px; color:#666; margin-bottom:10px;">
-                    Showing <span id="bus-count">5</span> active buses
+                    Showing <span id="bus-count">0</span> active buses
                 </div>
-                <div id="busesList">
-                    <!-- Buses will be populated by JavaScript -->
-                </div>
-                <div style="margin-top: 15px;">
-                    <button class="btn btn-primary" onclick="refreshBuses()">Refresh Buses</button>
-                    <button class="btn btn-warning" onclick="addNewBus()">Add Demo Bus</button>
-                </div>
-            </div>
-
-            <!-- Feedback & Reports -->
-            <div class="section">
-                <h2>📝 Feedback & Reports</h2>
-                <div class="form-group">
-                    <label>Report Type:</label>
-                    <select id="reportType">
-                        <option value="vendor">Vendor Blocking</option>
-                        <option value="crowd">Overcrowding</option>
-                        <option value="delay">Bus Delay</option>
-                        <option value="other">Other Issue</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Select Stop:</label>
-                    <select id="reportStop">
-                        <option value="Majestic">Majestic Bus Stand</option>
-                        <option value="Shivajinagar">Shivajinagar</option>
-                        <option value="Electronic City">Electronic City</option>
-                        <option value="Whitefield">Whitefield</option>
-                        <option value="Jayanagar">Jayanagar</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Description:</label>
-                    <textarea id="reportDesc" rows="3" placeholder="Describe the issue..."></textarea>
-                </div>
-                <div class="form-group">
-                    <label>Upload Photo (Optional):</label>
-                    <input type="file" id="photoUpload" accept="image/*">
-                </div>
-                <button class="btn btn-warning" onclick="submitReport()">Submit Report</button>
-                <button class="btn btn-primary" onclick="exportData()">Export System Data</button>
+                <div id="busesList">Loading buses...</div>
+                <button class="btn btn-primary" onclick="refreshBuses()" style="margin-top: 10px;">Refresh Buses</button>
             </div>
         </div>
     </div>
 
-    <!-- Team Footer -->
     <div style="background: #2c3e50; color: white; text-align: center; padding: 20px; margin-top: 20px;">
         <h3>🚍 Bengaluru Bus Management System</h3>
         <p><strong>Team:</strong> VIJAY, ESHWAR, AMAN, ABHISHEK, AKSHAY</p>
         <p>Making public transportation smarter for Bengaluru</p>
-        <p style="font-size:12px; opacity:0.8; margin-top:10px;">
-            Last updated: <span id="footer-time">--:--:--</span> | Auto-refresh active
-        </p>
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        // Initialize Map with better Bengaluru center
-        const map = L.map('map').setView([12.9760, 77.5790], 13);
+        // ===== BACKEND API URL - CHANGE THIS TO YOUR RENDER URL =====
+        const API_URL = 'https://bus-stand-resolution.onrender.com/api';
+        
+        // Global variables
+        let map;
+        let buses = [];
+        let busStops = [];
+        let busMarkers = [];
+        let stopMarkers = [];
+
+        // Initialize Map
+        map = L.map('map').setView([12.9760, 77.5790], 13);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '© OpenStreetMap contributors'
         }).addTo(map);
 
-        // Bus stops data
-        const busStops = [
-            { id: 1, name: "Majestic Bus Stand", lat: 12.9774, lon: 77.5711, crowd: "High", vendorBlocked: false },
-            { id: 2, name: "Shivajinagar", lat: 12.9915, lon: 77.6037, crowd: "Medium", vendorBlocked: false },
-            { id: 3, name: "Electronic City", lat: 12.8459, lon: 77.6633, crowd: "Low", vendorBlocked: false },
-            { id: 4, name: "Whitefield", lat: 12.9698, lon: 77.7500, crowd: "Medium", vendorBlocked: false },
-            { id: 5, name: "Jayanagar", lat: 12.9279, lon: 77.5939, crowd: "Low", vendorBlocked: false },
-            { id: 6, name: "Koramangala", lat: 12.9352, lon: 77.6245, crowd: "Medium", vendorBlocked: false },
-            { id: 7, name: "Indiranagar", lat: 12.9784, lon: 77.6408, crowd: "High", vendorBlocked: false },
-            { id: 8, name: "MG Road", lat: 12.9754, lon: 77.6095, crowd: "High", vendorBlocked: false }
-        ];
-
-        let buses = [];
-        let busMarkers = [];
-        let stopMarkers = [];
-        let busCounter = 0;
-
-        // Live timestamp function
-        function updateTime() {
-            const now = new Date();
-            const timeString = now.toLocaleTimeString('en-IN', {
-                timeZone: 'Asia/Kolkata',
-                hour12: false,
-                hour: '2-digit',
-                minute: '2-digit',
-                second: '2-digit'
-            });
-            
-            const dateString = now.toLocaleDateString('en-IN', {
-                timeZone: 'Asia/Kolkata',
-                weekday: 'short',
-                day: 'numeric',
-                month: 'short'
-            });
-            
-            document.getElementById('current-time').textContent = timeString;
-            document.getElementById('footer-time').textContent = `${dateString} ${timeString}`;
-        }
-
         // Show notification
-        function showNotification(message, type = 'info') {
+        function showNotification(message, type = 'success') {
             const notification = document.getElementById('notification');
             const text = document.getElementById('notification-text');
             
@@ -435,31 +386,42 @@
             }, 3000);
         }
 
-        // Initialize stops on map
-        function initializeStops() {
-            busStops.forEach(stop => {
-                const marker = L.marker([stop.lat, stop.lon])
-                    .addTo(map)
-                    .bindPopup(`
-                        <div style="min-width: 200px;">
-                            <h4 style="margin: 0 0 5px 0; color: #2c3e50;">${stop.name}</h4>
-                            <div style="display: flex; align-items: center; margin: 5px 0;">
-                                <strong>Crowd:</strong> 
-                                <span class="crowd-level crowd-${stop.crowd.toLowerCase()}" 
-                                      style="margin-left: 10px;">${stop.crowd}</span>
-                            </div>
-                            ${stop.vendorBlocked ? 
-                                '<div style="color: #e74c3c; margin: 5px 0;">🚫 Vendor Blocking Reported</div>' : 
-                                '<div style="color: #27ae60; margin: 5px 0;">✅ Clear Path</div>'}
-                        </div>
-                    `);
-                stopMarkers.push(marker);
+        // Update time
+        function updateTime() {
+            const now = new Date();
+            const timeString = now.toLocaleTimeString('en-IN', {
+                timeZone: 'Asia/Kolkata',
+                hour12: false
             });
-            updateStopsList();
+            document.getElementById('current-time').textContent = timeString;
+        }
+        setInterval(updateTime, 1000);
+        updateTime();
+
+        // Fetch bus stops
+        async function fetchStops() {
+            try {
+                const response = await fetch(`${API_URL}/stops`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    busStops = data.stops;
+                    updateStopsUI();
+                    updateStopMarkers();
+                    populateStopDropdowns();
+                    document.getElementById('backend-status').style.background = '#27ae60';
+                    document.getElementById('backend-url').textContent = 'Connected';
+                }
+            } catch (error) {
+                console.error('Error fetching stops:', error);
+                document.getElementById('backend-status').style.background = '#e74c3c';
+                document.getElementById('backend-url').textContent = 'Connection Failed';
+                showNotification('Failed to connect to backend', 'error');
+            }
         }
 
-        // Update stops list in UI
-        function updateStopsList() {
+        // Update stops UI
+        function updateStopsUI() {
             const stopsList = document.getElementById('stopsList');
             stopsList.innerHTML = '';
             
@@ -467,92 +429,114 @@
                 const stopDiv = document.createElement('div');
                 stopDiv.className = 'stop-item';
                 stopDiv.innerHTML = `
-                    <div style="flex: 1;">
+                    <div>
                         <strong>${stop.name}</strong>
                         <div style="font-size: 12px; color: #666; margin-top: 3px;">
-                            <span class="crowd-level crowd-${stop.crowd.toLowerCase()}">${stop.crowd} Crowd</span>
-                            ${stop.vendorBlocked ? ' <span style="color:#e74c3c;">🚫 Blocked</span>' : ''}
+                            <span class="crowd-level crowd-${stop.crowdLevel.toLowerCase()}">${stop.crowdLevel} Crowd</span>
                         </div>
-                    </div>
-                    <div>
-                        <button class="btn btn-warning" style="padding: 5px 10px; font-size: 12px;" 
-                                onclick="changeCrowdLevel(${stop.id})">Change</button>
-                        <button class="btn btn-danger" style="padding: 5px 10px; font-size: 12px;" 
-                                onclick="reportVendorBlocking(${stop.id})">${stop.vendorBlocked ? 'Clear' : 'Report'}</button>
                     </div>
                 `;
                 stopsList.appendChild(stopDiv);
             });
         }
 
-        // Fetch live bus data
-        async function fetchBuses() {
-            try {
-                const response = await fetch('/api/live-buses');
-                buses = await response.json();
-                updateBusMarkers();
-                updateBusesList();
-                document.getElementById('status').innerHTML = '<span class="status-indicator status-live"></span>Live Data Active';
-            } catch (error) {
-                console.log('Using simulated bus data');
-                simulateBuses();
-                document.getElementById('status').innerHTML = '<span class="status-indicator status-simulated"></span>Simulated Data (For Demo)';
-            }
-        }
+        // Update stop markers on map
+        function updateStopMarkers() {
+            stopMarkers.forEach(marker => map.removeLayer(marker));
+            stopMarkers = [];
 
-        // Update bus markers on map
-        function updateBusMarkers() {
-            // Clear existing bus markers
-            busMarkers.forEach(marker => map.removeLayer(marker));
-            busMarkers = [];
-
-            buses.forEach(bus => {
-                const busIcon = L.divIcon({
-                    html: `<div>🚍<small>${bus.route.substring(0, 3)}</small></div>`,
-                    className: 'bus-marker',
-                    iconSize: [40, 40]
-                });
-
-                const marker = L.marker([bus.lat, bus.lon], { icon: busIcon })
+            busStops.forEach(stop => {
+                const marker = L.marker([stop.location.lat, stop.location.lon])
                     .addTo(map)
                     .bindPopup(`
                         <div style="min-width: 200px;">
-                            <h4 style="margin: 0 0 5px 0;">Bus ${bus.id}</h4>
-                            <div><strong>Route:</strong> ${bus.route}</div>
-                            <div><strong>ETA:</strong> ${bus.eta} min</div>
-                            <div><strong>Next Stop:</strong> ${bus.nextStop}</div>
-                            <div><strong>Speed:</strong> ${bus.speed || '25-35'} km/h</div>
+                            <h4 style="margin: 0 0 5px 0;">${stop.name}</h4>
+                            <div><strong>Crowd:</strong> <span class="crowd-level crowd-${stop.crowdLevel.toLowerCase()}">${stop.crowdLevel}</span></div>
+                            <div><strong>Amenities:</strong> ${stop.amenities.join(', ')}</div>
                         </div>
                     `);
-                busMarkers.push(marker);
-            });
-            
-            // Update bus count
-            document.getElementById('bus-count').textContent = buses.length;
-            
-            // Update last update time
-            const now = new Date();
-            document.getElementById('last-update').textContent = now.toLocaleTimeString('en-IN', {
-                timeZone: 'Asia/Kolkata',
-                hour: '2-digit',
-                minute: '2-digit'
+                stopMarkers.push(marker);
             });
         }
 
-        // Update buses list in UI
-        function updateBusesList() {
+        // Populate stop dropdowns
+        function populateStopDropdowns() {
+            const fromStop = document.getElementById('fromStop');
+            const toStop = document.getElementById('toStop');
+            
+            fromStop.innerHTML = '<option value="">Select departure stop</option>';
+            toStop.innerHTML = '<option value="">Select destination stop</option>';
+            
+            busStops.forEach(stop => {
+                fromStop.innerHTML += `<option value="${stop.name}">${stop.name}</option>`;
+                toStop.innerHTML += `<option value="${stop.name}">${stop.name}</option>`;
+            });
+        }
+
+        // Fetch buses
+        async function fetchBuses() {
+            try {
+                const response = await fetch(`${API_URL}/live-buses`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    buses = data.buses;
+                    updateBusesUI();
+                    updateBusMarkers();
+                    document.getElementById('bus-count').textContent = buses.length;
+                    document.getElementById('last-update').textContent = new Date().toLocaleTimeString('en-IN', {
+                        timeZone: 'Asia/Kolkata',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    });
+                }
+            } catch (error) {
+                console.error('Error fetching buses:', error);
+                showNotification('Failed to fetch bus data', 'error');
+            }
+        }
+
+        // Update buses UI
+        function updateBusesUI() {
             const busesList = document.getElementById('busesList');
             busesList.innerHTML = '';
             
             buses.forEach(bus => {
                 const busDiv = document.createElement('div');
-                busDiv.className = 'stop-item';
+                busDiv.className = 'bus-item';
+                
+                let capacityColor = '#27ae60';
+                let capacityText = 'Seats Available';
+                
+                if (bus.occupancyRate >= 0.8) {
+                    capacityColor = '#e74c3c';
+                    capacityText = 'Almost Full';
+                } else if (bus.occupancyRate >= 0.5) {
+                    capacityColor = '#f39c12';
+                    capacityText = 'Moderate';
+                }
+                
                 busDiv.innerHTML = `
-                    <div>
-                        <strong>Bus ${bus.id}</strong>
-                        <div style="font-size: 12px; color: #666; margin-top: 3px;">
-                            <span style="display:inline-block; width:60px;">Route: ${bus.route}</span> | 
-                            ETA: <span style="color:#e74c3c;">${bus.eta} min</span> to ${bus.nextStop}
+                    <div style="flex: 1;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <strong>Bus ${bus.id}</strong>
+                                <div style="font-size: 12px; color: #666;">
+                                    Route: ${bus.route} | ETA: ${bus.eta} min to ${bus.nextStop}
+                                </div>
+                            </div>
+                            <div style="background: ${capacityColor}; color: white; padding: 3px 8px; border-radius: 12px; font-size: 12px;">
+                                ${Math.round(bus.occupancyRate * 100)}% Full
+                            </div>
+                        </div>
+                        <div class="capacity-indicator">
+                            <div class="capacity-bar">
+                                <div class="capacity-fill" style="width: ${bus.occupancyRate * 100}%; background: ${capacityColor};"></div>
+                            </div>
+                            <div class="capacity-info">
+                                <span style="color: ${capacityColor}; font-weight: bold;">${capacityText} (${bus.availableSeats} seats)</span>
+                                <span style="background: #e8f4fc; padding: 2px 8px; border-radius: 10px;">${bus.currentPassengers}/${bus.capacity}</span>
+                            </div>
                         </div>
                     </div>
                 `;
@@ -560,545 +544,121 @@
             });
         }
 
-        // Simulate buses with realistic movement
-        function simulateBuses() {
-            if (buses.length === 0) {
-                // Initial buses
-                buses = [
-                    { id: 'KA01AB1234', route: 'Vajra 1', lat: 12.9774, lon: 77.5711, eta: 5, nextStop: 'Majestic', speed: '30' },
-                    { id: 'KA01CD5678', route: 'Vajra 2', lat: 12.9915, lon: 77.6037, eta: 8, nextStop: 'Shivajinagar', speed: '28' },
-                    { id: 'KA01EF9012', route: 'Big 10', lat: 12.9698, lon: 77.7500, eta: 12, nextStop: 'Whitefield', speed: '35' },
-                    { id: 'KA01GH3456', route: 'Big 5', lat: 12.9279, lon: 77.5939, eta: 3, nextStop: 'Jayanagar', speed: '25' },
-                    { id: 'KA01IJ7890', route: 'Airport', lat: 12.9593, lon: 77.6615, eta: 15, nextStop: 'Electronic City', speed: '32' }
-                ];
-            }
-            
-            // Make buses move realistically
+        // Update bus markers
+        function updateBusMarkers() {
+            busMarkers.forEach(marker => map.removeLayer(marker));
+            busMarkers = [];
+
             buses.forEach(bus => {
-                // Move bus towards next stop
-                const nextStop = busStops.find(stop => stop.name === bus.nextStop);
-                if (nextStop) {
-                    const latDiff = nextStop.lat - bus.lat;
-                    const lonDiff = nextStop.lon - bus.lon;
-                    
-                    // Move 1/10th of the distance each update
-                    bus.lat += latDiff * 0.1;
-                    bus.lon += lonDiff * 0.1;
-                    
-                    // Update ETA based on distance
-                    const distance = Math.sqrt(latDiff*latDiff + lonDiff*lonDiff) * 100;
-                    bus.eta = Math.max(1, Math.floor(distance / 3));
-                    
-                    // If close to stop, move to next stop
-                    if (distance < 1) {
-                        const currentIndex = busStops.findIndex(stop => stop.name === bus.nextStop);
-                        const nextIndex = (currentIndex + 1) % busStops.length;
-                        bus.nextStop = busStops[nextIndex].name;
-                        bus.eta = 8 + Math.floor(Math.random() * 15);
-                        
-                        showNotification(`Bus ${bus.id} arrived at ${busStops[currentIndex].name}`);
-                    }
-                }
-                
-                // Keep buses in Bengaluru bounds
-                bus.lat = Math.max(12.80, Math.min(13.10, bus.lat));
-                bus.lon = Math.max(77.50, Math.min(77.80, bus.lon));
+                const busIcon = L.divIcon({
+                    html: '🚍',
+                    className: 'bus-marker',
+                    iconSize: [40, 40]
+                });
+
+                const marker = L.marker([bus.location.lat, bus.location.lon], { icon: busIcon })
+                    .addTo(map)
+                    .bindPopup(`
+                        <div style="min-width: 200px;">
+                            <h4 style="margin: 0 0 5px 0;">Bus ${bus.id}</h4>
+                            <div><strong>Route:</strong> ${bus.route}</div>
+                            <div><strong>Next Stop:</strong> ${bus.nextStop}</div>
+                            <div><strong>ETA:</strong> ${bus.eta} min</div>
+                            <div><strong>Speed:</strong> ${bus.speed} km/h</div>
+                            <div><strong>Seats:</strong> ${bus.availableSeats}/${bus.capacity}</div>
+                        </div>
+                    `);
+                busMarkers.push(marker);
             });
-            
-            updateBusMarkers();
-            updateBusesList();
         }
 
-        // Add new demo bus
-        function addNewBus() {
-            busCounter++;
-            const routes = ['Vajra 3', 'Vajra 4', 'Big 15', 'Big 20', 'City Circular', 'Express 1'];
-            const randomStop = busStops[Math.floor(Math.random() * busStops.length)];
-            const nextStopIndex = (busStops.findIndex(stop => stop.name === randomStop.name) + 1) % busStops.length;
+        // Book ticket
+        async function bookTicket(event) {
+            event.preventDefault();
             
-            const newBus = {
-                id: `KA01XY${1000 + busCounter}`,
-                route: routes[Math.floor(Math.random() * routes.length)],
-                lat: randomStop.lat + (Math.random() - 0.5) * 0.02,
-                lon: randomStop.lon + (Math.random() - 0.5) * 0.02,
-                eta: 5 + Math.floor(Math.random() * 15),
-                nextStop: busStops[nextStopIndex].name,
-                speed: (25 + Math.floor(Math.random() * 15)).toString()
-            };
-            
-            buses.push(newBus);
-            updateBusMarkers();
-            updateBusesList();
-            
-            showNotification(`Added new bus: ${newBus.id} on ${newBus.route} route`);
-        }
-
-        // Ticket Booking Function
-        function bookTicket() {
+            const userName = document.getElementById('userName').value;
+            const userPhone = document.getElementById('userPhone').value;
+            const userEmail = document.getElementById('userEmail').value;
             const fromStop = document.getElementById('fromStop').value;
             const toStop = document.getElementById('toStop').value;
-            const passengerCount = document.getElementById('passengerCount').value;
-
-            if (!fromStop || !toStop) {
-                showNotification('Please select both departure and destination stops.', 'warning');
-                return;
-            }
-
+            const passengers = document.getElementById('passengers').value;
+            const paymentMethod = document.getElementById('paymentMethod').value;
+            
             if (fromStop === toStop) {
-                showNotification('Departure and destination cannot be the same.', 'warning');
+                showNotification('Departure and destination cannot be the same!', 'warning');
                 return;
             }
-
-            const fare = passengerCount * 25;
-            const ticketId = 'TKT' + Date.now().toString().substr(-6);
-            const bookingTime = new Date().toLocaleString('en-IN', {
-                timeZone: 'Asia/Kolkata'
-            });
-
-            const ticketDetails = `
-                <div style="line-height: 1.6;">
-                    <div><strong>From:</strong> ${fromStop}</div>
-                    <div><strong>To:</strong> ${toStop}</div>
-                    <div><strong>Passengers:</strong> ${passengerCount}</div>
-                    <div><strong>Fare:</strong> ₹${fare}</div>
-                    <div><strong>Ticket ID:</strong> ${ticketId}</div>
-                    <div><strong>Booking Time:</strong> ${bookingTime}</div>
-                    <div><strong>Status:</strong> <span style="color:#27ae60;">Confirmed</span></div>
-                </div>
-            `;
-
-            document.getElementById('ticketDetails').innerHTML = ticketDetails;
-            document.getElementById('ticketDisplay').style.display = 'block';
             
-            showNotification(`Ticket booked successfully! ID: ${ticketId}`);
-        }
-
-        // Download Ticket
-        function downloadTicket() {
-            const ticketContent = document.getElementById('ticketDetails').innerText;
-            const blob = new Blob([ticketContent], { type: 'text/plain' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'bus-ticket.txt';
-            a.click();
-            URL.revokeObjectURL(url);
-            
-            showNotification('Ticket downloaded successfully!');
-        }
-
-        // Change crowd level
-        function changeCrowdLevel(stopId) {
-            const stop = busStops.find(s => s.id === stopId);
-            const levels = ['Low', 'Medium', 'High'];
-            const currentIndex = levels.indexOf(stop.crowd);
-            stop.crowd = levels[(currentIndex + 1) % levels.length];
-            updateStopsList();
-            updateStopMarkers();
-            
-            showNotification(`Crowd level at ${stop.name} changed to ${stop.crowd}`);
-        }
-
-        // Report vendor blocking
-        function reportVendorBlocking(stopId) {
-            const stop = busStops.find(s => s.id === stopId);
-            stop.vendorBlocked = !stop.vendorBlocked;
-            
-            // Increase ETA for buses near this stop
-            buses.forEach(bus => {
-                if (bus.nextStop === stop.name) {
-                    bus.eta += stop.vendorBlocked ? 5 : -5;
+            try {
+                const response = await fetch(`${API_URL}/book-ticket`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        userName,
+                        userPhone,
+                        userEmail,
+                        fromStop,
+                        toStop,
+                        passengers: parseInt(passengers),
+                        paymentMethod
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    document.getElementById('ticketDetails').innerHTML = `
+                        <p><strong>Ticket ID:</strong> ${data.ticket.ticketId}</p>
+                        <p><strong>Name:</strong> ${data.ticket.userName}</p>
+                        <p><strong>Phone:</strong> ${data.ticket.userPhone}</p>
+                        <p><strong>From:</strong> ${data.ticket.fromStop}</p>
+                        <p><strong>To:</strong> ${data.ticket.toStop}</p>
+                        <p><strong>Passengers:</strong> ${data.ticket.passengers}</p>
+                        <p><strong>Fare:</strong> ₹${data.ticket.fare}</p>
+                        <p><strong>Payment:</strong> ${data.ticket.paymentMethod.toUpperCase()} on bus</p>
+                    `;
+                    
+                    if (data.ticket.qrCode) {
+                        document.getElementById('qrCode').innerHTML = `
+                            <p><strong>Show this QR code to the conductor:</strong></p>
+                            <img src="data:image/png;base64,${data.ticket.qrCode}" alt="QR Code" style="width: 150px; height: 150px;"/>
+                        `;
+                    }
+                    
+                    document.getElementById('ticketDisplay').style.display = 'block';
+                    document.getElementById('bookingForm').style.display = 'none';
+                    
+                    showNotification(`Ticket booked! ID: ${data.ticket.ticketId}`);
+                } else {
+                    showNotification(data.error || 'Booking failed', 'error');
                 }
-            });
-            
-            updateStopsList();
-            updateBusMarkers();
-            updateBusesList();
-            
-            showNotification(
-                stop.vendorBlocked ? 
-                `Vendor blocking reported at ${stop.name}. ETAs increased.` : 
-                `Vendor blocking cleared at ${stop.name}. ETAs normalized.`
-            );
-        }
-
-        // Submit report
-        function submitReport() {
-            const reportType = document.getElementById('reportType').value;
-            const reportStop = document.getElementById('reportStop').value;
-            const reportDesc = document.getElementById('reportDesc').value;
-            const photoFile = document.getElementById('photoUpload').files[0];
-
-            if (!reportDesc) {
-                showNotification('Please provide a description for the report.', 'warning');
-                return;
+            } catch (error) {
+                console.error('Error booking ticket:', error);
+                showNotification('Failed to book ticket. Please try again.', 'error');
             }
-
-            const reportTypes = {
-                'vendor': 'Vendor Blocking',
-                'crowd': 'Overcrowding',
-                'delay': 'Bus Delay',
-                'other': 'Other Issue'
-            };
-
-            let message = `Thank you for your report!\n\n`;
-            message += `Type: ${reportTypes[reportType]}\n`;
-            message += `Location: ${reportStop}\n`;
-            message += `Description: ${reportDesc}`;
-            
-            if (photoFile) {
-                message += `\n\nPhoto "${photoFile.name}" has been attached.`;
-            }
-
-            showNotification(`Report submitted for ${reportStop}`);
-            
-            // Reset form
-            document.getElementById('reportDesc').value = '';
-            document.getElementById('photoUpload').value = '';
-        }
-
-        // Export system data
-        function exportData() {
-            const exportData = {
-                timestamp: new Date().toISOString(),
-                totalBuses: buses.length,
-                totalStops: busStops.length,
-                buses: buses,
-                stops: busStops,
-                systemStatus: 'operational'
-            };
-
-            const dataStr = JSON.stringify(exportData, null, 2);
-            const blob = new Blob([dataStr], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `bus-system-export-${new Date().getTime()}.json`;
-            a.click();
-            URL.revokeObjectURL(url);
-            
-            showNotification('System data exported successfully!');
         }
 
         // Refresh buses
         function refreshBuses() {
             fetchBuses();
-            showNotification('Refreshing bus locations...');
+            showNotification('Refreshing bus data...');
         }
 
-        // Update stop markers
-        function updateStopMarkers() {
-            stopMarkers.forEach((marker, index) => {
-                const stop = busStops[index];
-                marker.setPopupContent(`
-                    <div style="min-width: 200px;">
-                        <h4 style="margin: 0 0 5px 0; color: #2c3e50;">${stop.name}</h4>
-                        <div style="display: flex; align-items: center; margin: 5px 0;">
-                            <strong>Crowd:</strong> 
-                            <span class="crowd-level crowd-${stop.crowd.toLowerCase()}" 
-                                  style="margin-left: 10px;">${stop.crowd}</span>
-                        </div>
-                        ${stop.vendorBlocked ? 
-                            '<div style="color: #e74c3c; margin: 5px 0;">🚫 Vendor Blocking Reported</div>' : 
-                            '<div style="color: #27ae60; margin: 5px 0;">✅ Clear Path</div>'}
-                    </div>
-                `);
-            });
+        // Initialize app
+        async function initApp() {
+            await fetchStops();
+            await fetchBuses();
+            
+            // Refresh buses every 30 seconds
+            setInterval(fetchBuses, 30000);
+            
+            showNotification('Connected to Bengaluru Bus System!');
         }
 
-        // Initialize application
-        function initApp() {
-            initializeStops();
-            fetchBuses();
-            updateTime();
-            
-            // Update time every second
-            setInterval(updateTime, 1000);
-            
-            // Refresh buses every 5 seconds
-            setInterval(simulateBuses, 5000);
-            
-            // Initial notification
-            setTimeout(() => {
-                showNotification('Welcome to Bengaluru Bus System! Tracking 5 active buses.');
-            }, 1000);
-        }
-
-        // Start the application
+        // Start the app
         initApp();
     </script>
 </body>
 </html>
-// In your fetchBuses() function, update the bus display:
-function updateBusesList() {
-    const busesList = document.getElementById('busesList');
-    busesList.innerHTML = '';
-    
-    buses.forEach(bus => {
-        const busDiv = document.createElement('div');
-        busDiv.className = 'bus-item';
-        
-        // Determine capacity color
-        let capacityColor = '#27ae60'; // Green
-        let capacityText = 'Seats Available';
-        
-        if (bus.occupancyRate >= 0.8) {
-            capacityColor = '#e74c3c'; // Red
-            capacityText = 'Almost Full';
-        } else if (bus.occupancyRate >= 0.5) {
-            capacityColor = '#f39c12'; // Orange
-            capacityText = 'Moderate';
-        }
-        
-        // Create capacity bar HTML
-        const capacityBar = `
-            <div class="capacity-indicator">
-                <div class="capacity-bar">
-                    <div class="capacity-fill" style="width: ${bus.occupancyRate * 100}%; background: ${capacityColor};"></div>
-                </div>
-                <div class="capacity-info">
-                    <span class="capacity-text" style="color: ${capacityColor}">
-                        ${capacityText} (${bus.availableSeats} seats left)
-                    </span>
-                    <span class="capacity-stats">
-                        ${bus.currentPassengers}/${bus.capacity} passengers
-                    </span>
-                </div>
-            </div>
-        `;
-        
-        busDiv.innerHTML = `
-            <div style="flex: 1;">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <div>
-                        <strong>Bus ${bus.id}</strong>
-                        <div style="font-size: 12px; color: #666;">
-                            Route: ${bus.route} | ETA: ${bus.eta} min to ${bus.nextStop}
-                        </div>
-                    </div>
-                    <div class="capacity-badge" style="background: ${capacityColor}; color: white; padding: 3px 8px; border-radius: 12px; font-size: 12px;">
-                        ${Math.round(bus.occupancyRate * 100)}% Full
-                    </div>
-                </div>
-                ${capacityBar}
-            </div>
-        `;
-        busesList.appendChild(busDiv);
-    });
-}
-
-// Add this CSS to your style section
-const capacityCSS = `
-/* Capacity Indicator Styles */
-.capacity-indicator {
-    margin-top: 10px;
-    background: #f8f9fa;
-    padding: 10px;
-    border-radius: 8px;
-    border-left: 4px solid #3498db;
-}
-
-.capacity-bar {
-    width: 100%;
-    height: 8px;
-    background: #ecf0f1;
-    border-radius: 4px;
-    overflow: hidden;
-    margin-bottom: 8px;
-}
-
-.capacity-fill {
-    height: 100%;
-    border-radius: 4px;
-    transition: width 0.5s ease;
-}
-
-.capacity-info {
-    display: flex;
-    justify-content: space-between;
-    font-size: 12px;
-    color: #666;
-}
-
-.capacity-text {
-    font-weight: bold;
-}
-
-.capacity-stats {
-    background: #e8f4fc;
-    padding: 2px 8px;
-    border-radius: 10px;
-}
-
-/* Bus item with capacity */
-.bus-item {
-    background: white;
-    padding: 15px;
-    margin: 10px 0;
-    border-radius: 8px;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-    border-left: 4px solid #3498db;
-}
-
-/* Legend for capacity */
-.capacity-legend {
-    display: flex;
-    justify-content: center;
-    gap: 15px;
-    margin: 15px 0;
-    font-size: 12px;
-}
-
-.legend-item {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-}
-
-.legend-color {
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-}
-`;
-
-// Add to your existing CSS
-document.head.insertAdjacentHTML('beforeend', `<style>${capacityCSS}</style>`);
-
-// Add capacity legend to your page
-function addCapacityLegend() {
-    const legendHTML = `
-        <div class="capacity-legend">
-            <div class="legend-item">
-                <div class="legend-color" style="background: #27ae60;"></div>
-                <span>Good Capacity (0-50%)</span>
-            </div>
-            <div class="legend-item">
-                <div class="legend-color" style="background: #f39c12;"></div>
-                <span>Moderate (51-80%)</span>
-            </div>
-            <div class="legend-item">
-                <div class="legend-color" style="background: #e74c3c;"></div>
-                <span>Almost Full (81-100%)</span>
-            </div>
-        </div>
-    `;
-    
-    // Insert after Live Bus Locations heading
-    const busesSection = document.querySelector('h2:contains("📍 Live Bus Locations")');
-    if (busesSection) {
-        busesSection.insertAdjacentHTML('afterend', legendHTML);
-    }
-}
-
-// Smart capacity suggestions
-function getCapacitySuggestions() {
-    const suggestions = [];
-    
-    buses.forEach(bus => {
-        if (bus.occupancyRate >= 0.8) {
-            suggestions.push({
-                bus: bus.id,
-                route: bus.route,
-                message: `🚫 ${bus.id} is almost full (${bus.availableSeats} seats left)`,
-                suggestion: `Consider taking the next ${bus.route} bus or an alternative route`
-            });
-        } else if (bus.occupancyRate <= 0.3) {
-            suggestions.push({
-                bus: bus.id,
-                route: bus.route,
-                message: `✅ ${bus.id} has plenty of seats (${bus.availableSeats} available)`,
-                suggestion: `Good choice for comfortable travel`
-            });
-        }
-    });
-    
-    return suggestions;
-}
-
-// Display smart suggestions
-function displayCapacitySuggestions() {
-    const suggestions = getCapacitySuggestions();
-    const suggestionsHTML = suggestions.map(s => `
-        <div class="suggestion-item">
-            <strong>${s.message}</strong>
-            <div style="font-size: 12px; color: #666; margin-top: 3px;">
-                💡 ${s.suggestion}
-            </div>
-        </div>
-    `).join('');
-    
-    // Create suggestions container
-    const container = document.createElement('div');
-    container.className = 'suggestions-container';
-    container.innerHTML = `
-        <h3 style="margin: 15px 0 10px 0; color: #2c3e50;">💡 Smart Capacity Suggestions</h3>
-        ${suggestionsHTML}
-    `;
-    
-    // Add to page
-    const busesList = document.getElementById('busesList');
-    busesList.parentNode.insertBefore(container, busesList.nextSibling);
-}
-
-// Add this CSS for suggestions
-const suggestionsCSS = `
-.suggestions-container {
-    background: #e8f4fc;
-    border-radius: 10px;
-    padding: 15px;
-    margin: 20px 0;
-    border-left: 4px solid #3498db;
-}
-
-.suggestion-item {
-    background: white;
-    padding: 10px;
-    margin: 8px 0;
-    border-radius: 6px;
-    border-left: 3px solid #27ae60;
-}
-
-.suggestion-item:nth-child(odd) {
-    border-left-color: #f39c12;
-}
-`;
-
-// Initialize everything
-document.addEventListener('DOMContentLoaded', function() {
-    addCapacityLegend();
-    // Call this after fetching buses
-    setTimeout(displayCapacitySuggestions, 1000);
-});
-
-  // Simulate real-time capacity changes
-function simulateRealTimeCapacity() {
-    setInterval(() => {
-        buses.forEach(bus => {
-            // Random passenger changes
-            const change = Math.floor(Math.random() * 5) - 2; // -2 to +2
-            bus.currentPassengers = Math.max(0, Math.min(bus.capacity, bus.currentPassengers + change));
-            bus.availableSeats = bus.capacity - bus.currentPassengers;
-            bus.occupancyRate = bus.currentPassengers / bus.capacity;
-            
-            // Update bus marker color based on capacity
-            updateBusMarkerColor(bus);
-        });
-        
-        updateBusesList();
-        displayCapacitySuggestions();
-    }, 30000); // Update every 30 seconds
-}
-
-// Update map markers based on capacity
-function updateBusMarkerColor(bus) {
-    // Find the bus marker and update its color
-    const marker = busMarkers.find(m => m.busId === bus.id);
-    if (marker) {
-        let color = '#27ae60'; // Green
-        if (bus.occupancyRate >= 0.8) color = '#e74c3c'; // Red
-        else if (bus.occupancyRate >= 0.5) color = '#f39c12'; // Orange
-        
-        marker.setStyle({ color: color });
-    }
-}          
