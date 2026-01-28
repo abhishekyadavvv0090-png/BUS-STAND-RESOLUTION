@@ -829,3 +829,276 @@
     </script>
 </body>
 </html>
+// In your fetchBuses() function, update the bus display:
+function updateBusesList() {
+    const busesList = document.getElementById('busesList');
+    busesList.innerHTML = '';
+    
+    buses.forEach(bus => {
+        const busDiv = document.createElement('div');
+        busDiv.className = 'bus-item';
+        
+        // Determine capacity color
+        let capacityColor = '#27ae60'; // Green
+        let capacityText = 'Seats Available';
+        
+        if (bus.occupancyRate >= 0.8) {
+            capacityColor = '#e74c3c'; // Red
+            capacityText = 'Almost Full';
+        } else if (bus.occupancyRate >= 0.5) {
+            capacityColor = '#f39c12'; // Orange
+            capacityText = 'Moderate';
+        }
+        
+        // Create capacity bar HTML
+        const capacityBar = `
+            <div class="capacity-indicator">
+                <div class="capacity-bar">
+                    <div class="capacity-fill" style="width: ${bus.occupancyRate * 100}%; background: ${capacityColor};"></div>
+                </div>
+                <div class="capacity-info">
+                    <span class="capacity-text" style="color: ${capacityColor}">
+                        ${capacityText} (${bus.availableSeats} seats left)
+                    </span>
+                    <span class="capacity-stats">
+                        ${bus.currentPassengers}/${bus.capacity} passengers
+                    </span>
+                </div>
+            </div>
+        `;
+        
+        busDiv.innerHTML = `
+            <div style="flex: 1;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <strong>Bus ${bus.id}</strong>
+                        <div style="font-size: 12px; color: #666;">
+                            Route: ${bus.route} | ETA: ${bus.eta} min to ${bus.nextStop}
+                        </div>
+                    </div>
+                    <div class="capacity-badge" style="background: ${capacityColor}; color: white; padding: 3px 8px; border-radius: 12px; font-size: 12px;">
+                        ${Math.round(bus.occupancyRate * 100)}% Full
+                    </div>
+                </div>
+                ${capacityBar}
+            </div>
+        `;
+        busesList.appendChild(busDiv);
+    });
+}
+
+// Add this CSS to your style section
+const capacityCSS = `
+/* Capacity Indicator Styles */
+.capacity-indicator {
+    margin-top: 10px;
+    background: #f8f9fa;
+    padding: 10px;
+    border-radius: 8px;
+    border-left: 4px solid #3498db;
+}
+
+.capacity-bar {
+    width: 100%;
+    height: 8px;
+    background: #ecf0f1;
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 8px;
+}
+
+.capacity-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.5s ease;
+}
+
+.capacity-info {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    color: #666;
+}
+
+.capacity-text {
+    font-weight: bold;
+}
+
+.capacity-stats {
+    background: #e8f4fc;
+    padding: 2px 8px;
+    border-radius: 10px;
+}
+
+/* Bus item with capacity */
+.bus-item {
+    background: white;
+    padding: 15px;
+    margin: 10px 0;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    border-left: 4px solid #3498db;
+}
+
+/* Legend for capacity */
+.capacity-legend {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    margin: 15px 0;
+    font-size: 12px;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.legend-color {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+}
+`;
+
+// Add to your existing CSS
+document.head.insertAdjacentHTML('beforeend', `<style>${capacityCSS}</style>`);
+
+// Add capacity legend to your page
+function addCapacityLegend() {
+    const legendHTML = `
+        <div class="capacity-legend">
+            <div class="legend-item">
+                <div class="legend-color" style="background: #27ae60;"></div>
+                <span>Good Capacity (0-50%)</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #f39c12;"></div>
+                <span>Moderate (51-80%)</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #e74c3c;"></div>
+                <span>Almost Full (81-100%)</span>
+            </div>
+        </div>
+    `;
+    
+    // Insert after Live Bus Locations heading
+    const busesSection = document.querySelector('h2:contains("📍 Live Bus Locations")');
+    if (busesSection) {
+        busesSection.insertAdjacentHTML('afterend', legendHTML);
+    }
+}
+
+// Smart capacity suggestions
+function getCapacitySuggestions() {
+    const suggestions = [];
+    
+    buses.forEach(bus => {
+        if (bus.occupancyRate >= 0.8) {
+            suggestions.push({
+                bus: bus.id,
+                route: bus.route,
+                message: `🚫 ${bus.id} is almost full (${bus.availableSeats} seats left)`,
+                suggestion: `Consider taking the next ${bus.route} bus or an alternative route`
+            });
+        } else if (bus.occupancyRate <= 0.3) {
+            suggestions.push({
+                bus: bus.id,
+                route: bus.route,
+                message: `✅ ${bus.id} has plenty of seats (${bus.availableSeats} available)`,
+                suggestion: `Good choice for comfortable travel`
+            });
+        }
+    });
+    
+    return suggestions;
+}
+
+// Display smart suggestions
+function displayCapacitySuggestions() {
+    const suggestions = getCapacitySuggestions();
+    const suggestionsHTML = suggestions.map(s => `
+        <div class="suggestion-item">
+            <strong>${s.message}</strong>
+            <div style="font-size: 12px; color: #666; margin-top: 3px;">
+                💡 ${s.suggestion}
+            </div>
+        </div>
+    `).join('');
+    
+    // Create suggestions container
+    const container = document.createElement('div');
+    container.className = 'suggestions-container';
+    container.innerHTML = `
+        <h3 style="margin: 15px 0 10px 0; color: #2c3e50;">💡 Smart Capacity Suggestions</h3>
+        ${suggestionsHTML}
+    `;
+    
+    // Add to page
+    const busesList = document.getElementById('busesList');
+    busesList.parentNode.insertBefore(container, busesList.nextSibling);
+}
+
+// Add this CSS for suggestions
+const suggestionsCSS = `
+.suggestions-container {
+    background: #e8f4fc;
+    border-radius: 10px;
+    padding: 15px;
+    margin: 20px 0;
+    border-left: 4px solid #3498db;
+}
+
+.suggestion-item {
+    background: white;
+    padding: 10px;
+    margin: 8px 0;
+    border-radius: 6px;
+    border-left: 3px solid #27ae60;
+}
+
+.suggestion-item:nth-child(odd) {
+    border-left-color: #f39c12;
+}
+`;
+
+// Initialize everything
+document.addEventListener('DOMContentLoaded', function() {
+    addCapacityLegend();
+    // Call this after fetching buses
+    setTimeout(displayCapacitySuggestions, 1000);
+});
+
+  // Simulate real-time capacity changes
+function simulateRealTimeCapacity() {
+    setInterval(() => {
+        buses.forEach(bus => {
+            // Random passenger changes
+            const change = Math.floor(Math.random() * 5) - 2; // -2 to +2
+            bus.currentPassengers = Math.max(0, Math.min(bus.capacity, bus.currentPassengers + change));
+            bus.availableSeats = bus.capacity - bus.currentPassengers;
+            bus.occupancyRate = bus.currentPassengers / bus.capacity;
+            
+            // Update bus marker color based on capacity
+            updateBusMarkerColor(bus);
+        });
+        
+        updateBusesList();
+        displayCapacitySuggestions();
+    }, 30000); // Update every 30 seconds
+}
+
+// Update map markers based on capacity
+function updateBusMarkerColor(bus) {
+    // Find the bus marker and update its color
+    const marker = busMarkers.find(m => m.busId === bus.id);
+    if (marker) {
+        let color = '#27ae60'; // Green
+        if (bus.occupancyRate >= 0.8) color = '#e74c3c'; // Red
+        else if (bus.occupancyRate >= 0.5) color = '#f39c12'; // Orange
+        
+        marker.setStyle({ color: color });
+    }
+}          
