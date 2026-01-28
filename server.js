@@ -920,3 +920,168 @@ app.listen(PORT, () => {
     console.log(`📊 Admin Dashboard: http://localhost:${PORT}/api/admin/dashboard`);
     console.log(`🌱 Seed Data: http://localhost:${PORT}/api/seed-data`);
 });
+
+// In your bus schema (around line 70)
+const busSchema = new mongoose.Schema({
+    busId: { type: String, unique: true, required: true },
+    route: { type: String, required: true },
+    currentLocation: {
+        lat: { type: Number, required: true },
+        lon: { type: Number, required: true }
+    },
+    nextStop: String,
+    eta: { type: Number, default: 5 },
+    capacity: { type: Number, default: 50 },
+    currentPassengers: { type: Number, default: Math.floor(Math.random() * 30) }, // NEW
+    availableSeats: { type: Number, default: 20 },
+    occupancyRate: { type: Number, default: 0.6 }, // NEW: 60% full
+    lastStop: String, // NEW: To track passenger flow
+    speed: { type: Number, default: 30 },
+    status: { 
+        type: String, 
+        enum: ['active', 'inactive', 'maintenance'],
+        default: 'active'
+    },
+    lastUpdated: { type: Date, default: Date.now }
+});
+
+// Update the seed data function (around line 450)
+app.get('/api/seed-data', async (req, res) => {
+    try {
+        // Clear existing data
+        await Bus.deleteMany({});
+        
+        // Seed Buses with capacity data
+        const buses = [
+            { 
+                busId: "KA01AB1234", 
+                route: "Vajra 1", 
+                currentLocation: { lat: 12.9774, lon: 77.5711 }, 
+                nextStop: "Majestic Bus Stand", 
+                lastStop: "Jayanagar",
+                eta: 5, 
+                capacity: 50, 
+                currentPassengers: 35,
+                availableSeats: 15,
+                occupancyRate: 0.7,
+                speed: 30,
+                status: "active"
+            },
+            { 
+                busId: "KA01CD5678", 
+                route: "Vajra 2", 
+                currentLocation: { lat: 12.9816, lon: 77.6046 }, 
+                nextStop: "Shivajinagar", 
+                lastStop: "Majestic",
+                eta: 8, 
+                capacity: 50, 
+                currentPassengers: 20,
+                availableSeats: 30,
+                occupancyRate: 0.4,
+                speed: 28,
+                status: "active"
+            },
+            { 
+                busId: "KA01EF9012", 
+                route: "Big 10", 
+                currentLocation: { lat: 12.9616, lon: 77.5846 }, 
+                nextStop: "Whitefield", 
+                lastStop: "Electronic City",
+                eta: 12, 
+                capacity: 40, 
+                currentPassengers: 38,
+                availableSeats: 2,
+                occupancyRate: 0.95,
+                speed: 35,
+                status: "active"
+            },
+            { 
+                busId: "KA01GH3456", 
+                route: "Big 5", 
+                currentLocation: { lat: 12.9916, lon: 77.6146 }, 
+                nextStop: "Majestic Bus Stand", 
+                lastStop: "Koramangala",
+                eta: 3, 
+                capacity: 40, 
+                currentPassengers: 10,
+                availableSeats: 30,
+                occupancyRate: 0.25,
+                speed: 25,
+                status: "active"
+            },
+            { 
+                busId: "KA01IJ7890", 
+                route: "Airport", 
+                currentLocation: { lat: 12.9516, lon: 77.5746 }, 
+                nextStop: "Electronic City", 
+                lastStop: "Airport",
+                eta: 15, 
+                capacity: 60, 
+                currentPassengers: 45,
+                availableSeats: 15,
+                occupancyRate: 0.75,
+                speed: 32,
+                status: "active"
+            }
+        ];
+        
+        await Bus.insertMany(buses);
+        
+        res.json({
+            success: true,
+            message: 'Database seeded with capacity data',
+            busesCount: buses.length
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// Add capacity simulation endpoint
+app.post('/api/simulate-capacity', async (req, res) => {
+    try {
+        const buses = await Bus.find({ status: 'active' });
+        
+        for (const bus of buses) {
+            // Smart capacity simulation
+            let passengerChange = 0;
+            
+            // Morning rush (8-11 AM): buses fill up
+            const hour = new Date().getHours();
+            if (hour >= 8 && hour <= 11) {
+                passengerChange = Math.floor(Math.random() * 5) + 3; // 3-8 passengers board
+            }
+            // Evening rush (5-8 PM): buses fill up
+            else if (hour >= 17 && hour <= 20) {
+                passengerChange = Math.floor(Math.random() * 5) + 3;
+            }
+            // Off-peak: some get on, some get off
+            else {
+                passengerChange = Math.floor(Math.random() * 6) - 3; // -3 to +3
+            }
+            
+            // Update passenger count
+            let newPassengers = bus.currentPassengers + passengerChange;
+            newPassengers = Math.max(0, Math.min(bus.capacity, newPassengers)); // Keep within limits
+            
+            // Calculate occupancy rate
+            const occupancyRate = newPassengers / bus.capacity;
+            
+            await Bus.findByIdAndUpdate(bus._id, {
+                currentPassengers: newPassengers,
+                availableSeats: bus.capacity - newPassengers,
+                occupancyRate: occupancyRate,
+                lastUpdated: new Date()
+            });
+        }
+        
+        res.json({
+            success: true,
+            message: 'Bus capacity simulated',
+            updated: buses.length,
+            timeOfDay: new Date().getHours() + ':00'
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
