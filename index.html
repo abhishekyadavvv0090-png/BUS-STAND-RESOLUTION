@@ -662,3 +662,171 @@
     </script>
 </body>
 </html>
+<!-- FEEDBACK SECTION - ADD THIS TO YOUR index.html -->
+<!-- Replace or update your existing Feedback & Reports section with this -->
+
+<div class="section">
+    <h2>📝 Feedback & Reports</h2>
+    
+    <form id="feedbackForm" onsubmit="submitFeedback(event)">
+        <div class="form-group">
+            <label>Report Type: *</label>
+            <select id="reportType" required>
+                <option value="">Select issue type</option>
+                <option value="vendor">🚫 Vendor Blocking</option>
+                <option value="crowd">👥 Overcrowding</option>
+                <option value="delay">⏰ Bus Delay</option>
+                <option value="other">❓ Other Issue</option>
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label>Select Bus Stop: *</label>
+            <select id="reportStop" required>
+                <option value="">Select bus stop</option>
+                <!-- Will be populated dynamically -->
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label>Description: *</label>
+            <textarea id="reportDesc" rows="4" required placeholder="Please describe the issue in detail..."></textarea>
+        </div>
+        
+        <div class="form-group">
+            <label>Your Name: (optional)</label>
+            <input type="text" id="reporterName" placeholder="Your name">
+        </div>
+        
+        <div class="form-group">
+            <label>Your Phone: (optional)</label>
+            <input type="tel" id="reporterPhone" placeholder="10-digit number" pattern="[0-9]{10}">
+        </div>
+        
+        <div class="form-group">
+            <label>Your Email: (optional)</label>
+            <input type="email" id="reporterEmail" placeholder="For follow-up">
+        </div>
+        
+        <button type="submit" class="btn btn-warning">📤 Submit Report</button>
+        <button type="button" class="btn btn-primary" onclick="exportSystemData()">📊 Export System Data</button>
+    </form>
+    
+    <div id="feedbackResult" style="display: none; margin-top: 20px; padding: 15px; background: #d4edda; border-radius: 8px; border-left: 4px solid #28a745;">
+        <h3 style="color: #155724; margin-bottom: 10px;">✅ Report Submitted Successfully!</h3>
+        <p style="color: #155724;"><strong>Feedback ID:</strong> <span id="displayFeedbackId"></span></p>
+        <p style="color: #155724;"><strong>Priority:</strong> <span id="displayPriority"></span></p>
+        <p style="color: #155724;">Our team will review your report. Thank you for helping improve the system!</p>
+    </div>
+</div>
+
+<!-- ADD THIS JAVASCRIPT CODE AT THE END OF YOUR SCRIPT SECTION -->
+
+<script>
+// Populate report stop dropdown when stops are loaded
+function populateReportStops() {
+    const reportStopSelect = document.getElementById('reportStop');
+    if (reportStopSelect && busStops.length > 0) {
+        reportStopSelect.innerHTML = '<option value="">Select bus stop</option>';
+        busStops.forEach(stop => {
+            reportStopSelect.innerHTML += `<option value="${stop.name}">${stop.name}</option>`;
+        });
+    }
+}
+
+// Submit Feedback
+async function submitFeedback(event) {
+    event.preventDefault();
+    
+    const reportType = document.getElementById('reportType').value;
+    const stopName = document.getElementById('reportStop').value;
+    const description = document.getElementById('reportDesc').value;
+    const reporterName = document.getElementById('reporterName').value;
+    const reporterPhone = document.getElementById('reporterPhone').value;
+    const reporterEmail = document.getElementById('reporterEmail').value;
+    
+    if (!reportType || !stopName || !description) {
+        showNotification('Please fill in all required fields', 'warning');
+        return;
+    }
+    
+    // Show loading
+    const submitBtn = event.target.querySelector('button[type="submit"]');
+    const originalText = submitBtn.textContent;
+    submitBtn.textContent = '📤 Submitting...';
+    submitBtn.disabled = true;
+    
+    try {
+        const response = await fetch(`${API_URL}/submit-feedback`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                reportType,
+                stopName,
+                description,
+                reporterName,
+                reporterPhone,
+                reporterEmail
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            // Show success message
+            document.getElementById('displayFeedbackId').textContent = data.feedback.feedbackId;
+            document.getElementById('displayPriority').textContent = data.feedback.priority.toUpperCase();
+            document.getElementById('feedbackResult').style.display = 'block';
+            
+            // Hide form
+            document.getElementById('feedbackForm').style.display = 'none';
+            
+            showNotification(`Report submitted! ID: ${data.feedback.feedbackId}`, 'success');
+            
+            // Reset form after 5 seconds
+            setTimeout(() => {
+                document.getElementById('feedbackForm').reset();
+                document.getElementById('feedbackForm').style.display = 'block';
+                document.getElementById('feedbackResult').style.display = 'none';
+            }, 5000);
+        } else {
+            showNotification(data.error || 'Failed to submit report', 'error');
+        }
+    } catch (error) {
+        console.error('Error submitting feedback:', error);
+        showNotification('Network error. Please try again.', 'error');
+    } finally {
+        submitBtn.textContent = originalText;
+        submitBtn.disabled = false;
+    }
+}
+
+// Export System Data
+function exportSystemData() {
+    const exportData = {
+        timestamp: new Date().toISOString(),
+        totalBuses: buses.length,
+        totalStops: busStops.length,
+        buses: buses,
+        stops: busStops,
+        systemStatus: 'operational'
+    };
+    
+    const dataStr = JSON.stringify(exportData, null, 2);
+    const blob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `bus-system-export-${new Date().getTime()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    
+    showNotification('System data exported successfully!', 'success');
+}
+
+// Call this after stops are loaded
+// Add this line in your initApp() function after fetchStops()
+// populateReportStops();
+</script>
