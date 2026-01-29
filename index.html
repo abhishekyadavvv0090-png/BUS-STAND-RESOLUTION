@@ -662,8 +662,7 @@
     </script>
 </body>
 </html>
-<!-- FEEDBACK SECTION - ADD THIS TO YOUR index.html -->
-<!-- Replace or update your existing Feedback & Reports section with this -->
+<!-- REPLACE YOUR FEEDBACK SECTION WITH THIS COMPLETE VERSION -->
 
 <div class="section">
     <h2>📝 Feedback & Reports</h2>
@@ -684,7 +683,14 @@
             <label>Select Bus Stop: *</label>
             <select id="reportStop" required>
                 <option value="">Select bus stop</option>
-                <!-- Will be populated dynamically -->
+                <option value="Majestic Bus Stand">Majestic Bus Stand</option>
+                <option value="Shivajinagar">Shivajinagar</option>
+                <option value="Whitefield">Whitefield</option>
+                <option value="Electronic City">Electronic City</option>
+                <option value="Koramangala">Koramangala</option>
+                <option value="Jayanagar">Jayanagar</option>
+                <option value="Indiranagar">Indiranagar</option>
+                <option value="MG Road">MG Road</option>
             </select>
         </div>
         
@@ -720,21 +726,9 @@
     </div>
 </div>
 
-<!-- ADD THIS JAVASCRIPT CODE AT THE END OF YOUR SCRIPT SECTION -->
-
+<!-- ADD THIS JAVASCRIPT - REPLACE OLD submitFeedback FUNCTION -->
 <script>
-// Populate report stop dropdown when stops are loaded
-function populateReportStops() {
-    const reportStopSelect = document.getElementById('reportStop');
-    if (reportStopSelect && busStops.length > 0) {
-        reportStopSelect.innerHTML = '<option value="">Select bus stop</option>';
-        busStops.forEach(stop => {
-            reportStopSelect.innerHTML += `<option value="${stop.name}">${stop.name}</option>`;
-        });
-    }
-}
-
-// Submit Feedback
+// Submit Feedback Function - UPDATED VERSION
 async function submitFeedback(event) {
     event.preventDefault();
     
@@ -796,7 +790,7 @@ async function submitFeedback(event) {
         }
     } catch (error) {
         console.error('Error submitting feedback:', error);
-        showNotification('Network error. Please try again.', 'error');
+        showNotification('Network error. Please check if backend is running.', 'error');
     } finally {
         submitBtn.textContent = originalText;
         submitBtn.disabled = false;
@@ -825,8 +819,4 @@ function exportSystemData() {
     
     showNotification('System data exported successfully!', 'success');
 }
-
-// Call this after stops are loaded
-// Add this line in your initApp() function after fetchStops()
-// populateReportStops();
 </script>
