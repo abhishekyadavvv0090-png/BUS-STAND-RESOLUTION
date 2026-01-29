@@ -667,3 +667,320 @@ app.listen(PORT, () => {
     console.log(`📊 Admin Dashboard: http://localhost:${PORT}/api/admin/dashboard`);
     console.log(`💳 Payment: Simplified - Cash/UPI on bus`);
 });
+// ADD THIS TO YOUR server.js FILE
+
+// ============ FEEDBACK SCHEMA (Add after other schemas) ============
+
+const feedbackSchema = new mongoose.Schema({
+    feedbackId: { type: String, unique: true, required: true },
+    reportType: { 
+        type: String, 
+        enum: ['vendor', 'crowd', 'delay', 'other'],
+        required: true
+    },
+    stopName: { type: String, required: true },
+    description: { type: String, required: true },
+    reporterName: String,
+    reporterPhone: String,
+    reporterEmail: String,
+    photoUrl: String, // For future image upload
+    status: { 
+        type: String, 
+        enum: ['pending', 'in-progress', 'resolved', 'closed'],
+        default: 'pending'
+    },
+    priority: {
+        type: String,
+        enum: ['low', 'medium', 'high'],
+        default: 'medium'
+    },
+    adminNotes: String,
+    createdAt: { type: Date, default: Date.now },
+    resolvedAt: Date
+});
+
+const Feedback = mongoose.model('Feedback', feedbackSchema);
+
+// ============ FEEDBACK API ENDPOINTS (Add before app.listen) ============
+
+// 1. Submit Feedback/Report
+app.post('/api/submit-feedback', async (req, res) => {
+    try {
+        const { 
+            reportType, 
+            stopName, 
+            description,
+            reporterName,
+            reporterPhone,
+            reporterEmail
+        } = req.body;
+        
+        // Validation
+        if (!reportType || !stopName || !description) {
+            return res.status(400).json({ 
+                success: false, 
+                error: 'Please provide report type, stop name, and description' 
+            });
+        }
+        
+        // Generate unique feedback ID
+        const feedbackId = 'FB-' + Date.now().toString(36).toUpperCase() + '-' + 
+                          Math.random().toString(36).substring(2, 7).toUpperCase();
+        
+        // Determine priority based on report type
+        let priority = 'medium';
+        if (reportType === 'vendor') priority = 'high';
+        if (reportType === 'delay') priority = 'low';
+        
+        // Create feedback entry
+        const feedback = new Feedback({
+            feedbackId,
+            reportType,
+            stopName,
+            description,
+            reporterName: reporterName || 'Anonymous',
+            reporterPhone: reporterPhone || '',
+            reporterEmail: reporterEmail || '',
+            priority,
+            status: 'pending',
+            createdAt: new Date()
+        });
+        
+        await feedback.save();
+        
+        // Send email notification to admin if email configured
+        if (transporter && process.env.EMAIL_USER) {
+            try {
+                await transporter.sendMail({
+                    from: process.env.EMAIL_USER,
+                    to: process.env.EMAIL_USER, // Send to admin email
+                    subject: `🚨 New Feedback Report: ${reportType.toUpperCase()} - ${stopName}`,
+                    html: `
+                        <div style="font-family: Arial, sans-serif; max-width: 600px; padding: 20px;">
+                            <h2 style="color: #e74c3c;">🚨 New Feedback Report</h2>
+                            <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin: 15px 0;">
+                                <p><strong>Feedback ID:</strong> ${feedbackId}</p>
+                                <p><strong>Type:</strong> ${reportType.toUpperCase()}</p>
+                                <p><strong>Location:</strong> ${stopName}</p>
+                                <p><strong>Priority:</strong> <span style="color: ${priority === 'high' ? '#e74c3c' : priority === 'medium' ? '#f39c12' : '#27ae60'}">${priority.toUpperCase()}</span></p>
+                                <p><strong>Description:</strong></p>
+                                <p style="background: white; padding: 10px; border-radius: 5px;">${description}</p>
+                                ${reporterName ? `<p><strong>Reporter:</strong> ${reporterName}</p>` : ''}
+                                ${reporterPhone ? `<p><strong>Phone:</strong> ${reporterPhone}</p>` : ''}
+                                ${reporterEmail ? `<p><strong>Email:</strong> ${reporterEmail}</p>` : ''}
+                                <p><strong>Submitted:</strong> ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}</p>
+                            </div>
+                            <p style="color: #666; font-size: 12px;">Login to admin panel to view and manage this feedback.</p>
+                        </div>
+                    `
+                });
+                console.log('✅ Admin notification sent');
+            } catch (emailError) {
+                console.error('Email notification failed:', emailError);
+            }
+        }
+        
+        res.json({
+            success: true,
+            message: 'Feedback submitted successfully',
+            feedback: {
+                feedbackId: feedback.feedbackId,
+                reportType: feedback.reportType,
+                stopName: feedback.stopName,
+                priority: feedback.priority,
+                status: feedback.status,
+                createdAt: feedback.createdAt
+            }
+        });
+    } catch (error) {
+        console.error('Feedback submission error:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// 2. Get All Feedback (Admin)
+app.get('/api/admin/feedback', async (req, res) => {
+    try {
+        const { status, priority, reportType } = req.query;
+        
+        let filter = {};
+        if (status) filter.status = status;
+        if (priority) filter.priority = priority;
+        if (reportType) filter.reportType = reportType;
+        
+        const feedbacks = await Feedback.find(filter)
+            .sort({ createdAt: -1 })
+            .limit(100);
+        
+        const stats = {
+            total: await Feedback.countDocuments(),
+            pending: await Feedback.countDocuments({ status: 'pending' }),
+            inProgress: await Feedback.countDocuments({ status: 'in-progress' }),
+            resolved: await Feedback.countDocuments({ status: 'resolved' }),
+            highPriority: await Feedback.countDocuments({ priority: 'high', status: { $ne: 'resolved' } })
+        };
+        
+        res.json({
+            success: true,
+            stats,
+            count: feedbacks.length,
+            feedbacks: feedbacks.map(f => ({
+                feedbackId: f.feedbackId,
+                reportType: f.reportType,
+                stopName: f.stopName,
+                description: f.description,
+                reporterName: f.reporterName,
+                reporterPhone: f.reporterPhone,
+                reporterEmail: f.reporterEmail,
+                status: f.status,
+                priority: f.priority,
+                adminNotes: f.adminNotes,
+                createdAt: f.createdAt,
+                resolvedAt: f.resolvedAt
+            }))
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// 3. Get Single Feedback by ID
+app.get('/api/admin/feedback/:feedbackId', async (req, res) => {
+    try {
+        const feedback = await Feedback.findOne({ feedbackId: req.params.feedbackId });
+        
+        if (!feedback) {
+            return res.status(404).json({ success: false, error: 'Feedback not found' });
+        }
+        
+        res.json({
+            success: true,
+            feedback: {
+                feedbackId: feedback.feedbackId,
+                reportType: feedback.reportType,
+                stopName: feedback.stopName,
+                description: feedback.description,
+                reporterName: feedback.reporterName,
+                reporterPhone: feedback.reporterPhone,
+                reporterEmail: feedback.reporterEmail,
+                status: feedback.status,
+                priority: feedback.priority,
+                adminNotes: feedback.adminNotes,
+                createdAt: feedback.createdAt,
+                resolvedAt: feedback.resolvedAt
+            }
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// 4. Update Feedback Status (Admin)
+app.put('/api/admin/feedback/:feedbackId', async (req, res) => {
+    try {
+        const { status, priority, adminNotes } = req.body;
+        
+        const feedback = await Feedback.findOne({ feedbackId: req.params.feedbackId });
+        
+        if (!feedback) {
+            return res.status(404).json({ success: false, error: 'Feedback not found' });
+        }
+        
+        if (status) feedback.status = status;
+        if (priority) feedback.priority = priority;
+        if (adminNotes) feedback.adminNotes = adminNotes;
+        
+        if (status === 'resolved' && !feedback.resolvedAt) {
+            feedback.resolvedAt = new Date();
+        }
+        
+        await feedback.save();
+        
+        res.json({
+            success: true,
+            message: 'Feedback updated successfully',
+            feedback: {
+                feedbackId: feedback.feedbackId,
+                status: feedback.status,
+                priority: feedback.priority,
+                adminNotes: feedback.adminNotes,
+                resolvedAt: feedback.resolvedAt
+            }
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// 5. Delete Feedback (Admin)
+app.delete('/api/admin/feedback/:feedbackId', async (req, res) => {
+    try {
+        const result = await Feedback.deleteOne({ feedbackId: req.params.feedbackId });
+        
+        if (result.deletedCount === 0) {
+            return res.status(404).json({ success: false, error: 'Feedback not found' });
+        }
+        
+        res.json({
+            success: true,
+            message: 'Feedback deleted successfully'
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// 6. Get Feedback Statistics (Admin Dashboard)
+app.get('/api/admin/feedback-stats', async (req, res) => {
+    try {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        
+        const stats = {
+            total: await Feedback.countDocuments(),
+            todayTotal: await Feedback.countDocuments({
+                createdAt: { $gte: today, $lt: tomorrow }
+            }),
+            byStatus: {
+                pending: await Feedback.countDocuments({ status: 'pending' }),
+                inProgress: await Feedback.countDocuments({ status: 'in-progress' }),
+                resolved: await Feedback.countDocuments({ status: 'resolved' }),
+                closed: await Feedback.countDocuments({ status: 'closed' })
+            },
+            byPriority: {
+                high: await Feedback.countDocuments({ priority: 'high' }),
+                medium: await Feedback.countDocuments({ priority: 'medium' }),
+                low: await Feedback.countDocuments({ priority: 'low' })
+            },
+            byType: {
+                vendor: await Feedback.countDocuments({ reportType: 'vendor' }),
+                crowd: await Feedback.countDocuments({ reportType: 'crowd' }),
+                delay: await Feedback.countDocuments({ reportType: 'delay' }),
+                other: await Feedback.countDocuments({ reportType: 'other' })
+            },
+            urgent: await Feedback.countDocuments({ 
+                priority: 'high', 
+                status: { $in: ['pending', 'in-progress'] }
+            })
+        };
+        
+        // Recent high priority feedbacks
+        const recentUrgent = await Feedback.find({
+            priority: 'high',
+            status: { $in: ['pending', 'in-progress'] }
+        })
+        .sort({ createdAt: -1 })
+        .limit(5)
+        .select('feedbackId reportType stopName status createdAt');
+        
+        res.json({
+            success: true,
+            stats,
+            recentUrgent
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
